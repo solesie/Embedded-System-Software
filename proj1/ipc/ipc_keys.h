@@ -6,32 +6,29 @@
 #define IPC_KEYS_H
 
 enum sem_keys {
-	_KEY_T_SEM_START = 0x1000,
-
-	/* stoage table semaphore */
-	KEY_T_SEM_ST,
+	_KEY_T_SEM_START = 0x111,
 	
 	/* shared memory semaphores */
 	KEY_T_SEM_SHM_INPUT,
 	KEY_T_SEM_SHM_OUTPUT,
-	KEY_T_SEM_SHM_MT,
+	KEY_T_SEM_SHM_DB,
 
 	_KEY_T_SEM_END
 };
 
 enum shm_keys {
-	_KEY_T_SHM_START = 0x2000,
+	_KEY_T_SHM_START = 0x222,
 
 	/* shared memory */
 	KEY_T_SHM_INPUT,
 	KEY_T_SHM_OUTPUT,
-	KEY_T_SHM_MT,
+	KEY_T_SHM_DB,
 
 	_KEY_T_SHM_END
 };
 
 enum msgq_keys {
-	_KEY_T_MSGQ_START = 0x3000,
+	_KEY_T_MSGQ_START = 0x333,
 
 	/* message queue */
 	KEY_T_MSGQ,

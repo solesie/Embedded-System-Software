@@ -1,7 +1,7 @@
 #ifndef MSG_H
 #define MSG_H
 
-#define MSG_MAX_LEN 20
+#define MSG_MAX_LEN 200
 
 /* message */
 struct msgbuf {

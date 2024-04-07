@@ -1,7 +1,7 @@
 #ifndef SHM_OUTPUT_H
 #define SHM_OUTPUT_H
 
-#include "shm_input.h"
+#include "record.h"
 #include <stddef.h>
 
 /* response from the main process */
