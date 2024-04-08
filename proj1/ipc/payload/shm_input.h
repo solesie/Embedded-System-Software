@@ -12,8 +12,7 @@ enum mode{
 /* request from the io process */
 struct shm_input {
 	enum mode m;
-	char key[KEY_DIGIT + 1];
-	char val[VAL_MAX_LEN + 1];
+	struct record r;
 };
 
 #endif // SHM_INPUT_H

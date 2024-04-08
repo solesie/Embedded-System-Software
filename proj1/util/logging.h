@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define CUR_LOGGING_LEVEL 2
+#define CUR_LOGGING_LEVEL 1
 
 #define LOG_LEVEL_DEBUG 1
 #define LOG_LEVEL_INFO 2
