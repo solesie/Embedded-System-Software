@@ -31,7 +31,8 @@ enum msgq_keys {
 	_KEY_T_MSGQ_START = 0x333,
 
 	/* message queue */
-	KEY_T_MSGQ,
+	KEY_T_MSGQ_IO_2_MERGE,
+	KEY_T_MSGQ_MERGE_2_IO,
 
 	_KEY_T_MSGQ_END
 };

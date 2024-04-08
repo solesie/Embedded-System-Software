@@ -8,6 +8,7 @@
 #include <signal.h>
 #include "ipc_keys.h"
 #include "../util/logging.h"
+#include "semaphore.h"
 
 union semun { 
     int val;
@@ -32,7 +33,7 @@ struct sem_ids* sem_ids_create() {
 
 	if(ret->shm_input == -1 || ret->shm_output == -1 || ret->shm_database == -1){
 		LOG(LOG_LEVEL_ERROR, "sem_ids_create semget: %d", errno);
-		free(ret);
+		sem_ids_destroy(ret);
         return NULL;
 	}
 
@@ -46,7 +47,7 @@ struct sem_ids* sem_ids_create() {
 	if(semctl(ret->shm_database, 0, SETVAL, semunarg_shm_db) == -1) status = -1;
 	if(status == -1){
 		LOG(LOG_LEVEL_ERROR, "sem_ids_create semctl: %d", errno);
-		free(ret);
+		sem_ids_destroy(ret);
         return NULL;
 	}
 	return ret;

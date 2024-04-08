@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 #include "./ipc/semaphore.h"
 #include "./ipc/shm_database.h"
+#include "./ipc/msgq.h"
 #include "./util/logging.h"
 
 /* root process */
@@ -15,6 +16,12 @@ int main(void){
 	struct database* db = database_create(ids);
 	if(ids == NULL) {
 		sem_ids_destroy(ids);
+		exit(1);
+	}
+	struct bidir_message_queue* msgq = bidir_message_queue_create();
+	if(msgq == NULL) {
+		sem_ids_destroy(ids);
+		database_destroy(db);
 		exit(1);
 	}
 	
