@@ -10,4 +10,6 @@ struct record{
 	char val[VAL_MAX_LEN +1];
 };
 
+int compare_by_key(const void* a, const void* b); // comparator
+
 #endif
