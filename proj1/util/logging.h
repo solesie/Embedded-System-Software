@@ -7,8 +7,8 @@
 #define CUR_LOGGING_LEVEL 1
 
 #define LOG_LEVEL_DEBUG 1
-#define LOG_LEVEL_INFO 2
-#define LOG_LEVEL_WARN 3
+#define LOG_LEVEL_WARN 2
+#define LOG_LEVEL_INFO 3
 #define LOG_LEVEL_ERROR 4
 
 #define LOG(level, message, ...) \
@@ -20,8 +20,8 @@
 		char* level_str = "NULL"; \
 		switch (level) { \
 			case LOG_LEVEL_DEBUG: level_str = "DEBUG"; break; \
-			case LOG_LEVEL_INFO:  level_str = "INFO"; break; \
 			case LOG_LEVEL_WARN:  level_str = "WARN"; break; \
+			case LOG_LEVEL_INFO:  level_str = "INFO"; break; \
             case LOG_LEVEL_ERROR: level_str = "ERROR"; break; \
             default: level_str = "UNKNOWN"; \
         } \

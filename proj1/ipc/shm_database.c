@@ -199,6 +199,8 @@ int storage_table_count(struct database* db){
 	return ret;
 }
 
+/* read records from fp and save to res[RECORDS_MAX].
+ * res_size is initialized to the actual data size of res[RECORDS_MAX]. */
 static void merge(FILE* fp, struct record res[RECORDS_MAX], long long* res_size){
 	long long i;
 	struct record r;
@@ -209,9 +211,8 @@ static void merge(FILE* fp, struct record res[RECORDS_MAX], long long* res_size)
 			for(i = 0; i < *res_size; ++i){
 				if(strcmp(res[i].key, r.key) == 0){
 					found = 1;
-					if(res[i].pk < r.pk){
-						memcpy(&res[i], &r, sizeof(struct record));
-					}
+					// store the most recent value.
+					memcpy(&res[i], &r, sizeof(struct record));
 					break;
 				}
 			}
@@ -269,7 +270,7 @@ void storage_table_merge(struct database* db, struct merge_res* res){
 		killpg(getpgrp(), SIGABRT);
 	}
 	for(i = 0; i < records_size; ++i){
-		fprintf(fp, "%lld %s %s\n", ++db->last_pk, records[i].key, records[i].val);
+		fprintf(fp, "%lld %s %s\n", i + 1, records[i].key, records[i].val);
 	}
 	fclose(oldest1_fp);
 	fclose(oldest2_fp);

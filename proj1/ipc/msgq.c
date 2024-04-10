@@ -70,7 +70,7 @@ void on_message_merge(struct bidir_message_queue* msgq, struct database* db){
 	}
 	struct merge_res res;
 	storage_table_merge(db, &res);
-	LOG(LOG_LEVEL_DEBUG, "[BACKGROUND MERGE] new st name: %d, new st size: %ld", res.st_name, res.cnt);
+	LOG(LOG_LEVEL_DEBUG, "[BACKGROUND MERGE] new st name: %d, new st size: %zd", res.st_name, res.cnt);
 	if(msgsnd(msgq->msgq_merge_2_io, (void*)&msg2, MSG_MAX_LEN, 0) == -1){
 		LOG(LOG_LEVEL_ERROR, "on_message_merge: %d", errno);
 		killpg(getpgrp(), SIGABRT);
