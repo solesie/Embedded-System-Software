@@ -12,6 +12,7 @@
 #include "./payload/record.h"
 #include "./payload/merge_res.h"
 #include "../util/logging.h"
+#include "shm_database.h"
 
 #define MEMORY_TABLE_MAX 3
 #define STORAGE_TABLE_MAX 3
@@ -24,12 +25,12 @@ struct database{
 	int memory_table_count;
 	struct sem_ids* sem;
 
-	/* metadata */
+	// metadata
 	int last_filename;
 	long long last_pk;
 	int file_count;
 	
-	/* memory table */
+	// memory table
 	struct record memory_table[MEMORY_TABLE_MAX];
 };
 
@@ -50,6 +51,7 @@ struct database* database_create(struct sem_ids* ids) {
 	struct database* ret = (struct database*)shmat(id, 0, 0);
 	if(ret == (void*)-1) {
 		LOG(LOG_LEVEL_ERROR, "database_create shmat: %d", errno);
+		shmctl(id, IPC_RMID, 0);
 		return NULL;
 	}
 	memset(ret, 0, sizeof(struct database));

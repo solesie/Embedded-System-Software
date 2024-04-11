@@ -20,8 +20,7 @@ enum shm_keys {
 	_KEY_T_SHM_START = 0x222,
 
 	/* shared memory */
-	KEY_T_SHM_INPUT,
-	KEY_T_SHM_OUTPUT,
+	KEY_T_SHM_IO,
 	KEY_T_SHM_DB,
 
 	_KEY_T_SHM_END
