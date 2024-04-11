@@ -45,23 +45,23 @@
 /* device files */
 static const char DEVICES[DEVICE_CNT][25] = {
 	// output devices
-    "/dev/fpga_fnd",
-    "/dev/mem",
-    "/dev/fpga_text_lcd",
-    "/dev/fpga_step_motor",
+	"/dev/fpga_fnd",
+	"/dev/mem",
+	"/dev/fpga_text_lcd",
+	"/dev/fpga_step_motor",
 	// input devices
-    "/dev/input/event0",
-    "/dev/fpga_push_switch",
+	"/dev/input/event0",
+	"/dev/fpga_push_switch",
 	"/dev/fpga_dip_switch"
 };
 
 enum device_idx {
-    FND = 0,
-    LED,
-    TEXT_LCD,
-    MOTOR,
-    EVENT,
-    SWITCH,
+	FND = 0,
+	LED,
+	TEXT_LCD,
+	MOTOR,
+	EVENT,
+	SWITCH,
 	DIP_SWITCH // RESET button
 };
 
@@ -86,8 +86,9 @@ struct device_controller{
 static inline unsigned char* get_fpga_led_mmap_addr(struct device_controller* dc);
 static enum input_type find_switch_input_type(struct device_controller* dc, enum led_action ac);
 static inline int sw_buf_to_bits(unsigned char buf[SWITCH_CNT]);
-static void wait_all_sw_released(struct device_controller* dc, enum led_action ac);
 static void set_led(struct device_controller* dc, enum led_action ac);
+static inline void set_led_after_debounce(struct device_controller* dc, enum led_action ac);
+static int wait_all_sw_release_on_undefined(const int prev_bits, const int pressing_bits, struct device_controller* dc, enum led_action ac);
 
 struct device_controller* device_controller_create(){
 	struct device_controller* ret = (struct device_controller*)malloc(sizeof(struct device_controller));
@@ -123,19 +124,6 @@ static inline int sw_buf_to_bits(unsigned char sw_buf[SWITCH_CNT]){
 	for(i = 0; i < SWITCH_CNT; ++i)
 		ret |= (sw_buf[i] << (SWITCH_CNT - 1 - i));
 	return ret;
-}
-
-static void wait_all_sw_released(struct device_controller* dc, enum led_action ac){
-	unsigned char buf[SWITCH_CNT];
-	size_t size = SWITCH_CNT * sizeof(unsigned char);
-	while(1){
-		usleep(DEBOUNCING);
-		set_led(dc, ac);
-		read(dc->fd[SWITCH], buf, size);
-		if(sw_buf_to_bits(buf) == 0){
-			break;
-		}
-	}
 }
 
 static void set_led(struct device_controller* dc, enum led_action ac){
@@ -179,6 +167,29 @@ static void set_led(struct device_controller* dc, enum led_action ac){
 	dc->led_set_t = cur_t;
 }
 
+static inline void set_led_after_debounce(struct device_controller* dc, enum led_action ac){
+	usleep(DEBOUNCING);
+	set_led(dc, ac);
+}
+
+/* if the switch state becomes undefined, wait until all switchs are released, then return 1. */
+static int wait_all_sw_release_on_undefined(const int prev_bits, const int pressing_bits, struct device_controller* dc, enum led_action ac){
+	if((pressing_bits | prev_bits) != prev_bits){
+		unsigned char buf[SWITCH_CNT];
+		size_t size = SWITCH_CNT * sizeof(unsigned char);
+		LOG(LOG_LEVEL_DEBUG, "undefined switch pressed");
+		while(1){
+			set_led_after_debounce(dc, ac);
+			read(dc->fd[SWITCH], buf, size);
+			if(sw_buf_to_bits(buf) == 0){
+				LOG(LOG_LEVEL_DEBUG, "undefined switch released");
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
 /* if undefined switch pressed, then return DEFAULT */
 static enum input_type find_switch_input_type(struct device_controller* dc, enum led_action ac) {
 	const static int S4_AND_S6_BITS = 0x28; // 0b000101000
@@ -197,14 +208,10 @@ static enum input_type find_switch_input_type(struct device_controller* dc, enum
 	if(buf_bits == S4_AND_S6_BITS){
 		LOG(LOG_LEVEL_DEBUG, "s4 and s6 pressed");
 		while(1){
-			usleep(DEBOUNCING);
-			set_led(dc, ac);
+			set_led_after_debounce(dc, ac);
 			read(dc->fd[SWITCH], buf, size);
 			pressing_bits = sw_buf_to_bits(buf);
-			if((pressing_bits | S4_AND_S6_BITS) != S4_AND_S6_BITS){
-				LOG(LOG_LEVEL_DEBUG, "undefined switch pressed");
-				wait_all_sw_released(dc, ac);
-				LOG(LOG_LEVEL_DEBUG, "undefined switch released");
+			if(wait_all_sw_release_on_undefined(S4_AND_S6_BITS, pressing_bits, dc, ac)){
 				return DEFAULT;
 			}
 			if(pressing_bits == 0){
@@ -221,14 +228,10 @@ static enum input_type find_switch_input_type(struct device_controller* dc, enum
 		start_t = time(NULL);
 
 		while(1){
-			usleep(DEBOUNCING);
-			set_led(dc, ac);
+			set_led_after_debounce(dc, ac);
 			read(dc->fd[SWITCH], buf, size);
 			pressing_bits = sw_buf_to_bits(buf);
-			if((pressing_bits | S1_BITS) != S1_BITS){
-				LOG(LOG_LEVEL_DEBUG, "undefined switch pressed");
-				wait_all_sw_released(dc, ac);
-				LOG(LOG_LEVEL_DEBUG, "undefined switch released");
+			if(wait_all_sw_release_on_undefined(S1_BITS, pressing_bits, dc, ac)){
 				return DEFAULT;
 			}
 			if(pressing_bits == 0){
@@ -248,8 +251,7 @@ static enum input_type find_switch_input_type(struct device_controller* dc, enum
 		if(buf_bits == mask){
 			LOG(LOG_LEVEL_DEBUG, "s%d pressed", i);
 			while(1){
-				usleep(DEBOUNCING);
-				set_led(dc, ac);
+				set_led_after_debounce(dc, ac);
 				read(dc->fd[SWITCH], buf, size);
 				pressing_bits = sw_buf_to_bits(buf);
 				// if there is even a slight timing overlap where s4 and s6 are pressed simultaneously, 
@@ -257,14 +259,10 @@ static enum input_type find_switch_input_type(struct device_controller* dc, enum
 				if(pressing_bits == S4_AND_S6_BITS){
 					LOG(LOG_LEVEL_DEBUG, "s4 and s6 presssed");
 					while(1){
-						usleep(DEBOUNCING);
-						set_led(dc, ac);
+						set_led_after_debounce(dc, ac);
 						read(dc->fd[SWITCH], buf, size);
 						pressing_bits = sw_buf_to_bits(buf);
-						if((pressing_bits | S4_AND_S6_BITS) != S4_AND_S6_BITS){
-							LOG(LOG_LEVEL_DEBUG, "undefined switch pressed");
-							wait_all_sw_released(dc, ac);
-							LOG(LOG_LEVEL_DEBUG, "undefined switch released");
+						if(wait_all_sw_release_on_undefined(S4_AND_S6_BITS, pressing_bits, dc, ac)){
 							return DEFAULT;
 						}
 						if(pressing_bits == 0){
@@ -273,10 +271,7 @@ static enum input_type find_switch_input_type(struct device_controller* dc, enum
 						}
 					}
 				}
-				if((pressing_bits | mask) != mask){
-					LOG(LOG_LEVEL_DEBUG, "undefined switch pressed");
-					wait_all_sw_released(dc, ac);
-					LOG(LOG_LEVEL_DEBUG, "undefined switch released");
+				if(wait_all_sw_release_on_undefined(mask, pressing_bits, dc, ac)){
 					return DEFAULT;
 				}
 				if(pressing_bits == 0){
@@ -308,8 +303,7 @@ enum input_type device_controller_get_input(struct device_controller* dc, enum l
 	int rd;
 	unsigned char dip_sw_buff = 0;
 
-	usleep(DEBOUNCING);
-	set_led(dc, ac);
+	set_led_after_debounce(dc, ac);
 
 	// event: BACK, VOL_UP, VOL_DOWN
 	if((rd = read(dc->fd[EVENT], ev, size * EV_BUFF_SIZE)) >= size){
@@ -320,8 +314,7 @@ enum input_type device_controller_get_input(struct device_controller* dc, enum l
 		if(ret == DEFAULT) return ret; // PROG button ignore
 		LOG(LOG_LEVEL_DEBUG, "event %d pressed", ev[0].code);
 		while(1){
-			usleep(DEBOUNCING);
-			set_led(dc, ac);
+			set_led_after_debounce(dc, ac);
 			read(dc->fd[EVENT], ev, sizeof(struct input_event) * EV_BUFF_SIZE);
 			if(ev[0].value == 0){ // key release
 				LOG(LOG_LEVEL_DEBUG, "event %d released", ev[0].code);
@@ -335,8 +328,7 @@ enum input_type device_controller_get_input(struct device_controller* dc, enum l
 	if(dip_sw_buff == 0){
 		LOG(LOG_LEVEL_DEBUG, "reset pressed");
 		while(1){
-			usleep(DEBOUNCING);
-			set_led(dc, ac);
+			set_led_after_debounce(dc, ac);
 			read(dc->fd[DIP_SWITCH], &dip_sw_buff, 1);
 			if(dip_sw_buff != 0){
 				LOG(LOG_LEVEL_DEBUG, "reset released");
