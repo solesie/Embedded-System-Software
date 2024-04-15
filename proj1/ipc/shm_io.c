@@ -20,7 +20,7 @@
 #include "./payload/merge_res.h"
 #include "./payload/shm_input.h"
 #include "./payload/shm_output.h"
-#include "../util/logging.h"
+#include "../common/logging.h"
 
 struct shm_io {
 	int shm_io_id;

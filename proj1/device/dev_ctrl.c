@@ -17,8 +17,7 @@
 #include <time.h>
 #include <string.h>
 #include "dev_ctrl.h"
-#include "../ipc/payload/record.h"
-#include "../util/logging.h"
+#include "../common/logging.h"
 
 #define DEVICE_CNT 7
 
@@ -36,11 +35,13 @@
 #define BACK_CODE 158
 
 /* switch */
-#define SWITCH_CNT 9
-#define S1_HOLD_REQUIRED_SEC 1
+#define S1_HOLD_REQUIRED_SEC 2
 
 /* led */
-#define LED_TOGGLE_REQUIRED_SEC 1
+#define LED_TOGGLE_MIN_INTERVAL 1
+
+/* motor */
+#define MOTOR_TOGGLE_MIN_INTERVAL 2
 
 /* device files */
 static const char DEVICES[DEVICE_CNT][25] = {
@@ -78,9 +79,13 @@ static const int OPEN_FLAGS[DEVICE_CNT] = {
 
 struct device_controller{
 	int fd[DEVICE_CNT];
-	/* led */
+	
+	// led 
 	unsigned long* fpga_mmap_addr;
 	time_t led_set_t;
+	
+	// motor 
+	time_t motor_run_t;
 };
 
 static inline unsigned char* get_fpga_led_mmap_addr(struct device_controller* dc);
@@ -91,17 +96,20 @@ static inline void set_led_after_debounce(struct device_controller* dc, enum led
 static int wait_all_sw_release_on_undefined(const int prev_bits, const int pressing_bits, struct device_controller* dc, enum led_action ac);
 
 struct device_controller* device_controller_create(){
-	struct device_controller* ret = (struct device_controller*)malloc(sizeof(struct device_controller));
 	int i;
+	struct device_controller* ret = (struct device_controller*)malloc(sizeof(struct device_controller));
+
 	for(i = 0; i < DEVICE_CNT; ++i){
 		ret->fd[i] = open(DEVICES[i], OPEN_FLAGS[i]);
 		if(ret->fd[i] < 0){
-            LOG(LOG_LEVEL_ERROR, "device_manager_create");
+            LOG(LOG_LEVEL_ERROR, "device_manager_create open: %d", errno);
             killpg(getpgrp(), SIGABRT);
         }
 	}
+
     ret->fpga_mmap_addr = (unsigned long*)mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, ret->fd[LED], FPGA_BASE_ADDRESS);
 	ret->led_set_t = time(NULL);
+	ret->motor_run_t = time(NULL);
 	return ret;
 }
 
@@ -148,21 +156,24 @@ static void set_led(struct device_controller* dc, enum led_action ac){
 			break;
 		case LED3_AND_LED4_TOGGLE:
 			data = cur_data == LED3 || cur_data == LED4 ? cur_data : LED3;
-			if(cur_t - dc->led_set_t >= LED_TOGGLE_REQUIRED_SEC){
+			if(cur_t - dc->led_set_t >= LED_TOGGLE_MIN_INTERVAL){
 				data = cur_data == LED3 ? LED4 : LED3;
 			}
 			break;
 		case LED7_AND_8_TOGGLE:
 			data = cur_data == LED7 || cur_data == LED8 ? cur_data : LED7;
-			if(cur_t - dc->led_set_t >= LED_TOGGLE_REQUIRED_SEC)
+			if(cur_t - dc->led_set_t >= LED_TOGGLE_MIN_INTERVAL)
 				data = cur_data == LED7 ? LED8 : LED7;
 			break;
 		case LED5_ON:
 			data = LED5;
 			break;
+		case LED_ALL:
+			data = 0xFF;
+			break;
 	}
 	// write LED.
-	// if the reset button is pressed, it has been observed that the value 22 is overwritten on the LED...
+	// but if the reset button is pressed, it has been observed that the value 22 is overwritten on the LED...
 	*led_addr = data;
 	dc->led_set_t = cur_t;
 }
@@ -295,7 +306,7 @@ static enum input_type find_switch_input_type(struct device_controller* dc, enum
 }
 
 /* if an input is pressed, waits until the input is released and then returns the input_type. 
- * led_action defines the action of the LED during input. 
+ * led_action means the action of the LED during input.
  * return abstracted device Input.*/
 enum input_type device_controller_get_input(struct device_controller* dc, enum led_action ac){
 	struct input_event ev[EV_BUFF_SIZE];
@@ -341,17 +352,25 @@ enum input_type device_controller_get_input(struct device_controller* dc, enum l
 	return find_switch_input_type(dc, ac);
 }
 
-void device_controller_fnd_print(struct device_controller* dc, char key[KEY_DIGIT + 1]){
+/* although the LED action "during input" can be defined 
+ * through device_controller_get_input(), 
+ * it is declared because there is a need to define the LED behavior 
+ * after the "input has ended" as well. */
+void device_controller_led_off(struct device_controller* dc){
+	set_led(dc, LED_OFF);
+}
+
+void device_controller_fnd_print(struct device_controller* dc, const char numbers[FND_MAX + 1]){
 	unsigned char data[4];
 	int i;
-	for(i = 0; i < KEY_DIGIT; ++i){
-		if(key[i] < 0x30 || key[i] > 0x39){
-			LOG(LOG_LEVEL_ERROR, "device_controller_fnd_print: key should be number");
+	for(i = 0; i < FND_MAX; ++i){
+		if(numbers[i] < 0x30 || numbers[i] > 0x39){
+			LOG(LOG_LEVEL_ERROR, "device_controller_fnd_print: numbers should be number %d", numbers[i]);
 			killpg(getpgrp(), SIGABRT);
 		}
-		data[i] = key[i] - 0x30;
+		data[i] = numbers[i] - 0x30;
 	}
-	if(write(dc->fd[FND], data, KEY_DIGIT) < 0){
+	if(write(dc->fd[FND], data, FND_MAX) < 0){
 		LOG(LOG_LEVEL_ERROR, "device_controller_fnd_print write: %d", errno);
 		killpg(getpgrp(), SIGABRT);
 	}
@@ -360,15 +379,16 @@ void device_controller_fnd_print(struct device_controller* dc, char key[KEY_DIGI
 void device_controller_fnd_off(struct device_controller* dc){
 	unsigned char data[4];
 	memset(data, 0, sizeof(data));
-	if(write(dc->fd[FND], data, KEY_DIGIT) < 0){
+	if(write(dc->fd[FND], data, FND_MAX) < 0){
 		LOG(LOG_LEVEL_ERROR, "device_controller_fnd_off write: %d", errno);
 		killpg(getpgrp(), SIGABRT);
 	}
 }
 
-void device_controller_lcd_print(struct device_controller* dc, char mode[TEXT_LCD_MAX_LINE], char data[TEXT_LCD_MAX_LINE]){
+void device_controller_lcd_print(struct device_controller* dc, const char mode[TEXT_LCD_MAX_LINE], const char data[TEXT_LCD_MAX_LINE]){
 	char str[TEXT_LCD_MAX_BUFF];
 	int mode_len, data_len;
+	memset(str, 0, sizeof(str));
 	mode_len = strlen(mode);
 	data_len = strlen(data);
 
@@ -384,4 +404,42 @@ void device_controller_lcd_off(struct device_controller* dc){
 	char str[TEXT_LCD_MAX_BUFF];
 	memset(str, ' ', TEXT_LCD_MAX_BUFF);
 	write(dc->fd[TEXT_LCD], str, TEXT_LCD_MAX_BUFF);
+}
+
+void device_controller_motor_on(struct device_controller* dc){
+	unsigned char motor_state[3];
+	motor_state[0] = 1; // motor start
+	motor_state[1] = 1; // motor direction
+	motor_state[2] = 200; // motor speed
+	dc->motor_run_t = time(NULL);
+	write(dc->fd[MOTOR], motor_state, 3);
+}
+
+void device_controller_motor_off(struct device_controller* dc){
+	time_t end;
+	unsigned char motor_state[3];
+	motor_state[0] = 0; // motor stop
+	motor_state[1] = 1; // motor direction
+	motor_state[2] = 200; // motor speed
+	while(1){
+		usleep(DEBOUNCING);
+		end = time(NULL);
+		if(end - dc->motor_run_t >= MOTOR_TOGGLE_MIN_INTERVAL){
+			write(dc->fd[MOTOR], motor_state, 3);
+			return;
+		}
+	}
+}
+
+void device_controller_led_all_on(struct device_controller* dc){
+	time_t start, end;
+	start = time(NULL);
+	set_led(dc, LED_ALL);
+	while(1){
+		usleep(DEBOUNCING);
+		end = time(NULL);
+		if(end - start >= LED_TOGGLE_MIN_INTERVAL + 1){
+			return;
+		}
+	}
 }

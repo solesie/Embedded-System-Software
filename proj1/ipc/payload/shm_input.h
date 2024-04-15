@@ -2,15 +2,11 @@
 #define SHM_INPUT_H
 
 #include "record.h"
-
-enum mode{
-	PUT = 1,
-	GET,
-	MERGE
-};
+#include "../../common/mode.h"
 
 /* request from the io process */
 struct shm_input {
+	int terminate;
 	enum mode m;
 	struct record r;
 };

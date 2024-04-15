@@ -12,7 +12,7 @@
 #include "shm_database.h"
 #include "./payload/record.h"
 #include "./payload/msg.h"
-#include "../util/logging.h"
+#include "../common/logging.h"
 
 struct bidir_message_queue {
 	int msgq_io_2_merge;
@@ -46,7 +46,7 @@ void bidir_message_queue_destroy(struct bidir_message_queue* msgq){
 
 /* waits until MERGE is completed. 
  * it must be called only by the io process.*/
-void send_merge_req(struct bidir_message_queue* msgq){
+void bidir_message_queue_send_merge_req(struct bidir_message_queue* msgq, struct merge_res* res){
 	struct msgbuf msg1, msg2;
 	msg1.mtype = 1;
 	if(msgsnd(msgq->msgq_io_2_merge, (void*)&msg1, MSG_MAX_LEN, 0) == -1){
@@ -57,11 +57,13 @@ void send_merge_req(struct bidir_message_queue* msgq){
 		LOG(LOG_LEVEL_ERROR, "send_merge_req: %d", errno);
 		killpg(getpgrp(), SIGABRT);
 	}
+	sscanf(msg2.mtext, "%d %zu", &res->st_name, &res->cnt);
+	LOG(LOG_LEVEL_DEBUG, "[MERGE] received st name: %d, received st size: %zu", res->st_name, res->cnt);
 }
 
 /* waits until MERGE request is made, then proceeds.
  * it must be called only by the merge process. */
-void on_message_merge(struct bidir_message_queue* msgq, struct database* db){
+void bidir_message_queue_on_message_merge(struct bidir_message_queue* msgq, struct database* db){
 	struct msgbuf msg1, msg2;
 	msg2.mtype = 1;
 	if(msgrcv(msgq->msgq_io_2_merge, &msg1, MSG_MAX_LEN, 0, 0) == -1){
@@ -70,7 +72,9 @@ void on_message_merge(struct bidir_message_queue* msgq, struct database* db){
 	}
 	struct merge_res res;
 	storage_table_merge(db, &res);
-	LOG(LOG_LEVEL_DEBUG, "[BACKGROUND MERGE] new st name: %d, new st size: %zd", res.st_name, res.cnt);
+	LOG(LOG_LEVEL_DEBUG, "[MERGE] new st name: %d, new st size: %zu", res.st_name, res.cnt);
+
+	sprintf(msg2.mtext, "%d %zu", res.st_name, res.cnt);
 	if(msgsnd(msgq->msgq_merge_2_io, (void*)&msg2, MSG_MAX_LEN, 0) == -1){
 		LOG(LOG_LEVEL_ERROR, "on_message_merge: %d", errno);
 		killpg(getpgrp(), SIGABRT);

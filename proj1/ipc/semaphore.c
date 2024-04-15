@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include "ipc_keys.h"
-#include "../util/logging.h"
+#include "../common/logging.h"
 #include "semaphore.h"
 
 union semun { 

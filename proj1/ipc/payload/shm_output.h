@@ -6,10 +6,12 @@
 
 /* response from the main process */
 struct shm_output {
-	/* for PUT/GET mode */
+	int error;
+
+	// for PUT/GET mode
 	struct record r;
 
-	/* for MERGE mode */
+	// for MERGE mode
 	struct merge_res mr;
 };
 
