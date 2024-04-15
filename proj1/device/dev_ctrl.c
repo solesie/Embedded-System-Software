@@ -41,7 +41,7 @@
 #define LED_TOGGLE_MIN_INTERVAL 1
 
 /* motor */
-#define MOTOR_TOGGLE_MIN_INTERVAL 2
+#define MOTOR_TOGGLE_MIN_INTERVAL 3
 
 /* device files */
 static const char DEVICES[DEVICE_CNT][25] = {
@@ -385,8 +385,8 @@ void device_controller_fnd_off(struct device_controller* dc){
 	}
 }
 
-void device_controller_lcd_print(struct device_controller* dc, const char mode[TEXT_LCD_MAX_LINE], const char data[TEXT_LCD_MAX_LINE]){
-	char str[TEXT_LCD_MAX_BUFF];
+void device_controller_lcd_print(struct device_controller* dc, const char mode[TEXT_LCD_MAX_LINE + 1], const char data[TEXT_LCD_MAX_LINE + 1]){
+	char str[TEXT_LCD_MAX_BUFF + 1];
 	int mode_len, data_len;
 	memset(str, 0, sizeof(str));
 	mode_len = strlen(mode);

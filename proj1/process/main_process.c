@@ -34,10 +34,12 @@ void main_process(struct sem_ids* sem, struct database* db, struct shm_io* ipc_i
 				}
 
 				memory_table_put(db, &shmi.r);
+				shmo.error = 0;
 				memcpy(&shmo.r, &shmi.r, sizeof(struct record));
 				break;
 
 			case GET:
+				shmo.error = 0;
 				if(!database_get(db, shmi.r.key, &shmo.r)){
 					LOG(LOG_LEVEL_INFO, "key %s do not exist", shmi.r.key);
 					shmo.error = 1; // key not found error

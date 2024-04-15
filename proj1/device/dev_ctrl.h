@@ -52,7 +52,7 @@ enum input_type device_controller_get_input(struct device_controller* dc, enum l
 void device_controller_led_off(struct device_controller* dc);
 void device_controller_fnd_print(struct device_controller* dc, const char numbers[FND_MAX + 1]);
 void device_controller_fnd_off(struct device_controller* dc);
-void device_controller_lcd_print(struct device_controller* dc, const char mode[TEXT_LCD_MAX_LINE], const char data[TEXT_LCD_MAX_LINE]);
+void device_controller_lcd_print(struct device_controller* dc, const char mode[TEXT_LCD_MAX_LINE + 1], const char data[TEXT_LCD_MAX_LINE + 1]);
 void device_controller_lcd_off(struct device_controller* dc);
 void device_controller_motor_on(struct device_controller* dc);
 void device_controller_motor_off(struct device_controller* dc);

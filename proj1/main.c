@@ -4,6 +4,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <errno.h>
 #include "./ipc/semaphore.h"
 #include "./ipc/shm_database.h"
 #include "./ipc/shm_io.h"
@@ -18,8 +20,26 @@ void root_sigint_handler(int sig){
 	LOG(LOG_LEVEL_INFO, "to exit normally, must press the BACK button");
 }
 
+void init(){
+	char dir_path[] = "./st_files";
+	if(access(dir_path, F_OK) == -1){
+		if(mkdir(dir_path, 0777) == 1){
+			LOG(LOG_LEVEL_ERROR, "init: %d", errno);
+			exit(1);
+		}
+		FILE* fp = fopen("st_files/db.meta", "w");
+		fprintf(fp, "0 0 0 ");
+		fclose(fp);
+		LOG(LOG_LEVEL_INFO, "metadata of db created");
+		return;
+	}
+	LOG(LOG_LEVEL_INFO, "metadata of db already exists");
+}
+
 /* root process */
 int main(void){
+	init();
+
 	struct sem_ids* ids = sem_ids_create();
 	if(ids == NULL) {
 		exit(1);
