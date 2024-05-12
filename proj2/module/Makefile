@@ -1,5 +1,5 @@
 obj-m := dev_driver.o
-dev_driver-objs := timer_driver.o timer.o fpga_led.o fpga_text_lcd.o fpga_dot.o fpga_fnd.o fpga_dip_switch.o
+dev_driver-objs := timer_driver.o ioctl_timer_ctrl.o fpga_ctrl.o
 
 KDIR := /work/achroimx_kernel
 PWD := $(shell pwd)
