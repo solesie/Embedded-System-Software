@@ -5,17 +5,15 @@
 #include <linux/string.h>
 #include <linux/kernel.h>
 #include <linux/timer.h>
-#include <linux/delay.h>
 #include <linux/completion.h>
 #include <linux/atomic.h>
-#include "ioctl_timer_ctrl.h"
+#include "fpga_ctrl.h"
 #include "logging.h"
 
 #define COUNTDOWN 3
 
 static struct timer_list timer;
 static struct completion over;
-static atomic_t in_use = ATOMIC_INIT(0);
 
 static unsigned int timer_interval;
 static unsigned int timer_cnt;
@@ -26,27 +24,11 @@ static int validate(void){
     int	v = 0;
 	if(timer_interval < 1 || timer_interval > 100) return 0;
 	if(timer_cnt < 1 || timer_cnt > 200) return 0;
-	for(i = 0; i < FND_MAX; ++i){
-		if(timer_init[i] != '0'){
-			if(v) return 0;
-			v = 1;
-		}
-	}
-	return 1;
-}
-
-static void wait_dip_switch(void){
-	while(1){
-		usleep_range(1000, 1010);
-		if(!fpga_dip_switch_read()) continue;
-
-		while(1){
-			usleep_range(1000, 1010);
-			if(fpga_dip_switch_read()) continue;
-			LOG(LOG_LEVEL_DEBUG, "RESET button pressed");
-			return;
-		}
-	}
+	for (i = 0; i < FND_MAX; i++) {
+        if (timer_init[i] < '0' || timer_init[i] > '8') return 0;
+        if (timer_init[i] != '0') v++;
+    }
+	return v == 1;
 }
 
 /* countdown callback function(per 1sec) */
@@ -63,7 +45,7 @@ static void countdown(unsigned long cur){
 	add_timer(&timer);
 }
 
-/* timer callback function*/
+/* increase callback function*/
 static void increase(unsigned long cur){
 	if(++cur >= timer_cnt){
 		fpga_set_countdown();
@@ -96,8 +78,6 @@ void destroy_timer_ctrl(void){
 /* Return 0 on ERROR. */
 int set_timer_ctrl(unsigned int _timer_interval, unsigned int _timer_cnt, char _timer_init[FND_MAX + 1]){
 	int i;
-	if(atomic_cmpxchg(&in_use, 0, 1))
-		return 0;
 
 	timer_interval = _timer_interval;
 	timer_cnt = _timer_cnt;
@@ -106,7 +86,6 @@ int set_timer_ctrl(unsigned int _timer_interval, unsigned int _timer_cnt, char _
 		timer_interval = 0;
 		timer_cnt = 0;
 		memset(timer_init, 0, sizeof(timer_init));
-		atomic_set(&in_use, 0);
 		return 0;
 	}
 
@@ -115,14 +94,14 @@ int set_timer_ctrl(unsigned int _timer_interval, unsigned int _timer_cnt, char _
 	return 1;
 }
 
+void wait_dip_switch(void){
+	fpga_dip_switch_read_sync();
+}
+
 /* Return 0 on ERROR. */
 int run_timer_ctrl(void){
-	if(atomic_read(&in_use) == 0) 
-		return 0;
-
-	// wait until the RESET button is pressed and released.
-	wait_dip_switch();
-
+	LOG(LOG_LEVEL_INFO, "Start timer...");
+	
 	// Let's run timer...
 	del_timer_sync(&timer);
 	timer.expires = get_jiffies_64() + (timer_interval * HZ / 10);
@@ -138,7 +117,6 @@ int run_timer_ctrl(void){
 	timer_interval = 0;
 	timer_cnt = 0;
 	memset(timer_init, 0, sizeof(timer_init));
-	atomic_set(&in_use, 0);
 	
 	return 1;
 }

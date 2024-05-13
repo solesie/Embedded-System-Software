@@ -4,6 +4,7 @@
 #include <linux/io.h>
 #include <linux/string.h>
 #include <linux/kernel.h>
+#include <linux/delay.h>
 #include "fpga_ctrl.h"
 #include "logging.h"
 
@@ -193,30 +194,42 @@ void fpga_countdown(void){
     print();
 }
 
+/* Interrupt context not safe */
 void fpga_ioremap(void){
-    iom_fpga_dip_switch_addr = ioremap(IOM_FPGA_DIP_SWITCH_ADDRESS, 0x1);
+	iom_fpga_dip_switch_addr = ioremap(IOM_FPGA_DIP_SWITCH_ADDRESS, 0x1);
     iom_fpga_dot_addr = ioremap(IOM_FPGA_DOT_ADDRESS, 0x10);
     iom_fpga_fnd_addr = ioremap(IOM_FND_ADDRESS, 0x4);
     iom_fpga_led_addr = ioremap(IOM_LED_ADDRESS, 0x1);
     iom_fpga_text_lcd_addr = ioremap(IOM_FPGA_TEXT_LCD_ADDRESS, 0x32);
 }
 
+/* Interrupt context not safe */
 void fpga_iounmap(void){
-    iounmap(iom_fpga_dip_switch_addr);
+	iounmap(iom_fpga_dip_switch_addr);
     iounmap(iom_fpga_dot_addr);
     iounmap(iom_fpga_fnd_addr);
     iounmap(iom_fpga_led_addr);
     iounmap(iom_fpga_text_lcd_addr);
 }
 
-/* 1: pressed, 0: not pressed */
-int fpga_dip_switch_read(void){
+/* Wait until the RESET button is pressed and released.
+ * Interrupt context not safe */
+void fpga_dip_switch_read_sync(void){
 	unsigned char dip_sw_value;	
 	unsigned short _s_dip_sw_value;
 
-	_s_dip_sw_value = inw((unsigned int)iom_fpga_dip_switch_addr);
-	dip_sw_value = _s_dip_sw_value & 0xFF;
+	while(1){
+		usleep_range(1000, 1010);
+		_s_dip_sw_value = inw((unsigned int)iom_fpga_dip_switch_addr);
+		dip_sw_value = _s_dip_sw_value & 0xFF;
+		if(dip_sw_value != 0) continue;
 
-	if(dip_sw_value == 0) return 1;
-	return 0;
+		while(1){
+			usleep_range(1000, 1010);
+			_s_dip_sw_value = inw((unsigned int)iom_fpga_dip_switch_addr);
+			dip_sw_value = _s_dip_sw_value & 0xFF;
+			if(dip_sw_value == 0) continue;
+			return;
+		}
+	}
 }

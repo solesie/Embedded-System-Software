@@ -6,6 +6,7 @@
 void create_timer_ctrl(void);
 void destroy_timer_ctrl(void);
 int set_timer_ctrl(unsigned int timer_interval, unsigned int timer_cnt, char timer_init[FND_MAX + 1]);
+void wait_dip_switch(void);
 int run_timer_ctrl(void);
 
 #endif

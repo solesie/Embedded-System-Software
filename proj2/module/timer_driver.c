@@ -46,6 +46,11 @@ static int timer_close(struct inode* inode, struct file* fp){
 	return 0;
 }
 
+static ssize_t timer_read(struct file* fp, char __user *buf, size_t count, loff_t* f_pos){
+	wait_dip_switch();
+	return 1;
+}
+
 static long timer_ioctl(struct file* fp, unsigned int cmd, unsigned long arg){
 	struct ioctl_set_option_arg data;
 	memset(&data, 0, sizeof(data));
@@ -73,6 +78,7 @@ static long timer_ioctl(struct file* fp, unsigned int cmd, unsigned long arg){
 static struct file_operations fops = {
 	.owner = THIS_MODULE,
 	.open = timer_open,
+	.read = timer_read,
 	.release = timer_close,
 	.unlocked_ioctl = timer_ioctl,
 };

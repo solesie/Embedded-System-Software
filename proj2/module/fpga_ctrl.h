@@ -10,6 +10,6 @@ void fpga_off(void);
 void fpga_set_countdown(void);
 void fpga_countdown(void);
 void fpga_increase(void);
-int fpga_dip_switch_read(void);
+void fpga_dip_switch_read_sync(void);
 
 #endif
