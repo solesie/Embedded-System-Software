@@ -5,6 +5,7 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
+#include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 
@@ -19,6 +20,10 @@ struct ioctl_set_option_arg{
 	char timer_init[FND_MAX + 1];
 };
 
+static void sigint_handler(int sig){
+	fprintf(stderr, "[app] To exit normally, must press RESET button and wait.\n");
+}
+
 static void insmod(){
 	pid_t pid = fork();
 	if(pid == 0){
@@ -30,12 +35,12 @@ static void insmod(){
 	int status;
 	waitpid(pid, &status, 0);
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		printf("execl: insmod dev_driver.ko failed.\n");
+		fprintf(stderr, "[app] execl: insmod dev_driver.ko failed.\n");
 	}
 }
 
 static inline void print_error(){
-	printf("Usage: ./app TIMER_INTERVAL TIMER_CNT TIMER_INIT\n\n"
+	fprintf(stderr, "[app] Usage: ./app TIMER_INTERVAL TIMER_CNT TIMER_INIT\n\n"
 		"Where:\n"
     	"- TIMER_INTERVAL: An integer between 1 and 100, indicating the timer interval.\n"
     	"- TIMER_CNT: An integer between 1 and 100, indicating the number of timer counts.\n"
@@ -79,6 +84,8 @@ static int validate_argv3(char* argv3, char timer_init[FND_MAX + 1]){
 }
 
 int main(int argc, char** argv){
+	(void)signal(SIGINT, sigint_handler);
+
 	if(argc != 4){
 		print_error();
 		return 1;
@@ -104,7 +111,7 @@ int main(int argc, char** argv){
 	arg.timer_cnt = (unsigned int) timer_cnt;
 	strcpy(arg.timer_init, timer_init);
 	ioctl(fd, SET_OPTION, &arg);
-	printf("To start the timer, press the reset button.\n");
+	fprintf(stderr, "[app] To start the timer, press the reset button.\n");
 	read(fd, NULL, 1);
 	ioctl(fd, COMMAND);
 
