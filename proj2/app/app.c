@@ -105,6 +105,7 @@ int main(int argc, char** argv){
 	
 	insmod();
 	int fd = open("/dev/dev_driver", O_RDWR);
+	if(fd == -1) return -1;
 
 	struct ioctl_set_option_arg arg;
 	arg.timer_interval = (unsigned int) timer_interval;
