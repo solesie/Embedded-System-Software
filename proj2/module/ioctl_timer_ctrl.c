@@ -19,6 +19,7 @@ static unsigned int timer_interval;
 static unsigned int timer_cnt;
 static char timer_init[FND_MAX + 1];
 
+/* Validate args */
 static int validate(void){
 	int i;
     int	v = 0;
@@ -45,7 +46,7 @@ static void countdown(unsigned long cur){
 	add_timer(&timer);
 }
 
-/* increase callback function*/
+/* increase callback function(per timer_interval) */
 static void increase(unsigned long cur){
 	if(++cur >= timer_cnt){
 		fpga_set_countdown();
@@ -100,6 +101,8 @@ void wait_dip_switch(void){
 
 /* Return 0 on ERROR. */
 int run_timer_ctrl(void){
+	if(!validate()) return 0;
+
 	LOG(LOG_LEVEL_INFO, "Start timer...");
 	
 	// Let's run timer...

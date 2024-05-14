@@ -107,14 +107,29 @@ int main(int argc, char** argv){
 	int fd = open("/dev/dev_driver", O_RDWR);
 	if(fd == -1) return -1;
 
+	// set option
 	struct ioctl_set_option_arg arg;
 	arg.timer_interval = (unsigned int) timer_interval;
 	arg.timer_cnt = (unsigned int) timer_cnt;
 	strcpy(arg.timer_init, timer_init);
-	ioctl(fd, SET_OPTION, &arg);
+	if(ioctl(fd, SET_OPTION, &arg) < 0){
+		// assert not happen
+		return 1;
+	}
+	
+	// wait reset button
 	fprintf(stderr, "[app] To start the timer, press the reset button.\n");
-	read(fd, NULL, 1);
-	ioctl(fd, COMMAND);
+	char temp_buf[1];
+	if(read(fd, temp_buf, 1) < 0){
+		// assert not happen
+		return 1;
+	}
+
+	// run program...
+	if(ioctl(fd, COMMAND) < 0){
+		// assert not happen
+		return 1;
+	}
 
 	close(fd);
 	return 0;	

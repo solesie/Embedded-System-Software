@@ -58,7 +58,8 @@ static long timer_ioctl(struct file* fp, unsigned int cmd, unsigned long arg){
 	switch(cmd){
 		case IOCTL_SET_OPTION:
 			if(copy_from_user(&data, (struct ioctl_set_option_arg __user *)arg, sizeof(data)))
-				return -EFAULT;	
+				return -EFAULT;
+			// invalid ioctl args
 			if(set_timer_ctrl(data.timer_interval, data.timer_cnt, data.timer_init) == 0)
 				return -EINVAL;
 			return 0;

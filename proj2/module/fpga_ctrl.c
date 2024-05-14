@@ -97,6 +97,7 @@ static void print(void){
 	}
 }
 
+/* Let's ready to run timer */
 void fpga_on(int _timer_cnt, int _countdown, char _timer_init[FND_MAX + 1]){
     // init dot
     int i;
@@ -119,6 +120,7 @@ void fpga_on(int _timer_cnt, int _countdown, char _timer_init[FND_MAX + 1]){
     print();
 }
 
+/* Timer increase callback */
 void fpga_increase(void){
     int i;
 
@@ -160,6 +162,7 @@ void fpga_increase(void){
     print();
 }
 
+/* Turn off fpga devices. */
 void fpga_off(void){
     dot = DOT_TABLE_MAX + 1;
     memset(fnd, 0, sizeof(fnd));
@@ -176,6 +179,7 @@ void fpga_off(void){
     print();
 }
 
+/* Let's ready to countdown */
 void fpga_set_countdown(void){
 	dot = DOT_TABLE_MAX + 1;
     memset(fnd, 0, sizeof(fnd));
@@ -187,6 +191,7 @@ void fpga_set_countdown(void){
 	print();
 }
 
+/* Timer countdown callback */
 void fpga_countdown(void){
     memset(text_lcd, 0, sizeof(text_lcd));
 	sprintf(text_lcd, "Time's up!     0Shutdown in %d...", --countdown);
