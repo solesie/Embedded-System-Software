@@ -1,5 +1,5 @@
 obj-m := stopwatch.o
-dev_driver-objs := 
+stopwatch-objs := stopwatch_driver.o stopwatch_ctrl.o
 
 KDIR := /work/achroimx_kernel
 PWD := $(shell pwd)
