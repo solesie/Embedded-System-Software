@@ -25,7 +25,7 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
     public static native void nativeSetSurface(Surface surface);
     private static String TAG = "Game1Activity";
     static {
-        System.loadLibrary("nativeegl");
+        System.loadLibrary("mini-game");
     }
 
 	@Override
