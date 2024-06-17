@@ -16,6 +16,6 @@ proj3/module/*.symvers
 proj3/module/*.cmd
 proj3/module/.tmp_versions
 proj3/app/*.out
-proj4/MiniGameController/obj/
-proj4/MiniGameController/gen/
-proj4/MiniGameController/bin/
+mini-game/MiniGameController/obj/
+mini-game/MiniGameController/gen/
+mini-game/MiniGameController/bin/
