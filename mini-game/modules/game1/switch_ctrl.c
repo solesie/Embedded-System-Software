@@ -15,14 +15,14 @@ void push_switch_init(void){
 
 enum direction push_switch_read(void){
     int i;
-	unsigned char push_sw_value[MAX_BUTTON];	
-	unsigned short int _s_value;
+    unsigned char push_sw_value[MAX_BUTTON];
+    unsigned short int _s_value;
     enum direction ret = NONE;
 
-	for(i = 0; i < MAX_BUTTON; ++i) {
-		_s_value = inw((unsigned int)iom_fpga_push_switch_addr+i*2);
-		push_sw_value[i] = _s_value &0xFF;
-	}
+    for(i = 0; i < MAX_BUTTON; ++i) {
+        _s_value = inw((unsigned int)iom_fpga_push_switch_addr+i*2);
+        push_sw_value[i] = _s_value &0xFF;
+    }
 
     for(i = 0; i < MAX_BUTTON; ++i){
         // dip switch

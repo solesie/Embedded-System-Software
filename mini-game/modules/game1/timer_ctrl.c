@@ -77,15 +77,15 @@ static void fpga_print_fnd(unsigned int time){
  */
 static void fpga_timer_callback(unsigned long unused){
 	struct single_thread_wq_elem* w; 
-	
+
 	cur_time = (cur_time + 1) % TIME_MAX;
-	
+
 	w = kmalloc(sizeof(struct single_thread_wq_elem), GFP_ATOMIC);
 	if(!w){
 		LOG(LOG_LEVEL_INFO, "Heap lack");
 		return;
 	}
-    w->data = cur_time;
+	w->data = cur_time;
 	INIT_WORK(&w->work, fpga_timer_do_wq);
 	queue_work(single_thread_wq, &w->work);
 	return;
@@ -112,11 +112,11 @@ static void fpga_timer_do_wq(struct work_struct* work){
 int timer_init(void){
 	// init MMIO
 	iom_fpga_dot_addr = ioremap(IOM_FPGA_DOT_ADDRESS, 0x10);
-    iom_fpga_fnd_addr = ioremap(IOM_FND_ADDRESS, 0x4);
+	iom_fpga_fnd_addr = ioremap(IOM_FND_ADDRESS, 0x4);
 	// init timer
 	init_timer(&fpga_timer);
 	// init wq
-	single_thread_wq = create_singlethread_workqueue("single_thread_wq");	
+	single_thread_wq = create_singlethread_workqueue("single_thread_wq");
 	if(!single_thread_wq){
 		LOG(LOG_LEVEL_INFO, "Heap lack");
 		return 0;
@@ -130,7 +130,7 @@ int timer_init(void){
 void timer_del(void){
 	// timer
 	del_timer_sync(&fpga_timer);
-    cur_time = 0;
+	cur_time = 0;
 	fpga_print_dot(BLANK);
 	fpga_print_fnd(cur_time);
 	// wq
@@ -142,9 +142,9 @@ void timer_del(void){
 }
 
 void timer_run(void){
-    fpga_timer.expires = get_jiffies_64() + HZ/10;
-    fpga_timer.function = fpga_timer_callback;
-    add_timer(&fpga_timer);
+	fpga_timer.expires = get_jiffies_64() + HZ/10;
+	fpga_timer.function = fpga_timer_callback;
+	add_timer(&fpga_timer);
 	LOG(LOG_LEVEL_INFO, "timer is registered");
 }
 

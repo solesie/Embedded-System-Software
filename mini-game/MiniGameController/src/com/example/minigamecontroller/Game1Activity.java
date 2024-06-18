@@ -18,7 +18,7 @@ import android.content.pm.ConfigurationInfo;
 
 public class Game1Activity extends Activity implements SurfaceHolder.Callback {
 
-	public static native void nativeOnStart();
+    public static native void nativeOnStart();
     public static native void nativeOnResume();
     public static native void nativeOnPause();
     public static native void nativeOnStop();
@@ -28,21 +28,21 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
         System.loadLibrary("mini-game");
     }
 
-	@Override
+    @Override
     public void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_game1);
-		
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_game1);
+
         SurfaceView surfaceView = (SurfaceView)findViewById(R.id.surfaceview);
         surfaceView.getHolder().addCallback(this);
         surfaceView.setOnClickListener(new OnClickListener() {
-        	public void onClick(View view) {
-        		Intent intent = new Intent(Game1Activity.this, BackPopupActivity.class);
-                startActivity(intent);
-                overridePendingTransition(0, 0);
-            }});
+        public void onClick(View view) {
+            Intent intent = new Intent(Game1Activity.this, BackPopupActivity.class);
+            startActivity(intent);
+            overridePendingTransition(0, 0);
+        }});
     }
-	@Override
+    @Override
     protected void onStart() {
         super.onStart();
         Log.i(TAG, "onStart()");
@@ -55,7 +55,7 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
         Log.i(TAG, "onResume()");
         nativeOnResume();
     }
-    
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -64,7 +64,7 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
             finish();
         }
     }
-    
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -78,13 +78,13 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
         Log.i(TAG, "onStop()");
         nativeOnStop();
     }
-    
+
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
         nativeSetSurface(holder.getSurface());
     }
 
     public void surfaceCreated(SurfaceHolder holder) {
-    	
+
     }
 
     public void surfaceDestroyed(SurfaceHolder holder) {

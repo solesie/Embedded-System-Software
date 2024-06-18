@@ -29,11 +29,11 @@ public class MainActivity extends Activity {
 				startActivity(intent);
 			}
 		});
-    }
-    
-    @Override
-    public void onDestroy(){
-    	super.onDestroy();
-    	Log.i(TAG, "onDestroy()");
-    }
+	}
+
+	@Override
+	public void onDestroy(){
+		super.onDestroy();
+		Log.i(TAG, "onDestroy()");
+	}
 }

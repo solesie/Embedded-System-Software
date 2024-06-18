@@ -7,8 +7,8 @@ void create_swords(void);
 void destroy_swords(void);
 std::vector<std::pair<float, float> > get_cur_swords(const long long);
 
-void init_swords(void);
-void draw_swords(void);
-void del_swords(void);
+void init_sword(void);
+void draw_sword(void);
+void del_sword(void);
 
 #endif // GAME1_MODELS_SWORD_H

@@ -1,4 +1,5 @@
 .ccls-cache
+.vscode
 git-auth
 proj1/*.out
 proj1/st_files/

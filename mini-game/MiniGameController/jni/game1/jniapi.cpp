@@ -32,7 +32,8 @@ JNIEXPORT void JNICALL Java_com_example_minigamecontroller_Game1Activity_nativeS
         window = ANativeWindow_fromSurface(env, surface);
         LOG_INFO("Got window %p", window);
         init_egl(window);
-    } else {
+    } 
+    else {
         del_egl();
         LOG_INFO("Releasing window");
     }

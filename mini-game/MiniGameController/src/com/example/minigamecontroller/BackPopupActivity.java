@@ -7,9 +7,9 @@ import android.view.View;
 import android.widget.Button;
 
 public class BackPopupActivity extends Activity {
-	@Override
+    @Override
     public void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_back_popup);
         
         Button resumeButton = (Button) findViewById(R.id.resumeButton);
