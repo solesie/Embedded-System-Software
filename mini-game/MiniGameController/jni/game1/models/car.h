@@ -3,14 +3,14 @@
 
 #include <vector>
 
-void add_new_car(long long);
-void destroy_cars(void);
-void remove_out_of_bound_cars(long long);
-bool remove_crushed_car(long long, int, int, int, std::pair<float, float>*);
-std::vector<std::pair<float, float> > get_cur_cars(long long);
+void car_add(long long);
+void cars_free(void);
+void cars_remove_out_of_bound(long long);
+bool car_remove_crushed(long long, int, int, int, std::pair<float, float>*);
+std::vector<std::pair<float, float> > cars_get(long long);
 
-void init_car(void);
-void draw_car(void);
-void del_car(void);
+void car_prepare(void);
+void car_draw(void);
+void car_release(void);
 
 #endif // GAME1_MODELS_CAR_H

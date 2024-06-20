@@ -3,12 +3,12 @@
 
 #include <vector>
 
-void create_swords(void);
-void destroy_swords(void);
-std::vector<std::pair<float, float> > get_cur_swords(const long long);
+void swords_create(void);
+void swords_destroy(void);
+std::vector<std::pair<float, float> > swords_get(const long long);
 
-void init_sword(void);
-void draw_sword(void);
-void del_sword(void);
+void sword_prepare(void);
+void sword_draw(void);
+void sword_release(void);
 
 #endif // GAME1_MODELS_SWORD_H

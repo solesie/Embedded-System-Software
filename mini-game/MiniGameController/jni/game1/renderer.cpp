@@ -23,6 +23,7 @@
 #include "../logger.h"
 
 #define TO_RADIAN 0.01745329252f
+#define TO_DEGREE 57.295779513f
 
 /*
  * game driver module arributes(modles/driver.c)
@@ -34,6 +35,7 @@
 #define IOCTL_DEC_LIFECOUNT_NONBLOCK _IO(MINIGAME_MAJOR, 3)
 #define IOCTL_GAMEOVER_NONBLOCK _IO(MINIGAME_MAJOR, 4)
 #define IOCTL_WAIT_BACK_INTERRUPT _IOR(MINIGAME_MAJOR, 5, int)
+#define INITIAL_LIFE 3
 enum direction{
 	NONE = 0,
 	UP,
@@ -87,8 +89,24 @@ struct game_state{
 	int androboy_cur_rightest, androboy_cur_leftest;
 	int house_x;
 	bool gameover;
+	int lifecount;
 };
 static struct game_state gstate;
+
+/*
+ * Only used to render gameover animation motion.
+ */
+struct gameover_motion_attrib{
+	long long gameover_time;
+
+	std::pair<float, float> last_crushed_car; // (x, y)
+	std::vector<std::pair<float, float> > gameover_swords;
+
+	std::vector<float> rotating_swords_time_limit;
+	std::vector<float> rotating_swords_cur_time;
+	std::vector<float> killing_swords_delta;
+};
+static struct gameover_motion_attrib gover_attrib;
 
 struct game_pad{
 	int fd;
@@ -104,13 +122,13 @@ static glm::mat4 mvp_matrix, vp_matrix, m_matrix;
  * The context being current applies to a thread, so different threads should have different current contexts.
  */
 static void release_context(){
-	del_road();
-	del_sword();
-	del_car();
-	del_house();
-	del_androboy();
+	road_release();
+	sword_release();
+	car_release();
+	house_release();
+	androboy_release();
 
-	del_shaders();
+	shaders_del();
 
 	eglMakeCurrent(egl.display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 	eglDestroyContext(egl.display, egl.context);
@@ -184,14 +202,14 @@ static void acquire_context(){
 	glViewport(0, 0, egl.width, egl.height);
 
 	// should be inited at current context
-	init_shaders();
+	shaders_init();
 
 	// prepare models
-	init_road();
-	init_sword();
-	init_car();
-	init_house();
-	init_androboy();
+	road_prepare();
+	sword_prepare();
+	car_prepare();
+	house_prepare();
+	androboy_prepare();
 }
 
 static void reset_ingame_attrib(void){
@@ -202,18 +220,28 @@ static void reset_ingame_attrib(void){
 	gstate.androboy_cur_leftest = gstate.androboy_cur_x - 34;
 	gstate.cur_time = 0;
 	gstate.gameover = false;
+	gstate.lifecount = INITIAL_LIFE;
+
+	gover_attrib.gameover_time = 0;
+	gover_attrib.last_crushed_car = std::make_pair(0.0f, 0.0f);
+	gover_attrib.gameover_swords.clear();
+	gover_attrib.rotating_swords_cur_time.clear();
+	gover_attrib.rotating_swords_time_limit.clear();
+	gover_attrib.killing_swords_delta.clear();
+
 	gpad.prev_dir = NONE;
 
-	destroy_cars();
+	cars_free();
 }
 
 /*
- * Read fpga push switch from game1 driver and
+ * Read fpga push switch from minigame driver and
  * change gstate androboy coords.
  */
 static void read_gpad(void){
 	enum direction input;
 	if(read(gpad.fd, &input, 1) != 1) return;
+	if(gstate.gameover) return;
 
 	switch(input){
 	case LEFT:
@@ -258,7 +286,7 @@ static void draw_frame(){
 	m_matrix = glm::mat4(1.0f);
 	mvp_matrix = vp_matrix * m_matrix;
 	glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
-	draw_road();
+	road_draw();
 
 	// superman androboy
 	int superman_androboy_x = (gstate.cur_time % 1201) - 600; // -600 <= superman_androboy_x <= 600
@@ -276,11 +304,21 @@ static void draw_frame(){
 	}
 	mvp_matrix = vp_matrix * m_matrix;
 	glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
-	draw_androboy();
+	androboy_draw();
+
+	// cars
+	std::vector<std::pair<float, float> > cars = cars_get(gstate.cur_time);
+	for (int i = 0; i < cars.size(); ++i) {
+		m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(cars[i].first, cars[i].second, 0.0f));
+		m_matrix = glm::scale(m_matrix, glm::vec3(2.0, 2.0, 1.0f));
+		mvp_matrix = vp_matrix * m_matrix;
+		glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
+		car_draw();
+	}
 
 	if (gstate.cur_time % 50 == 0) 
-		add_new_car(gstate.cur_time);
-	remove_out_of_bound_cars(gstate.cur_time);
+		car_add(gstate.cur_time);
+	cars_remove_out_of_bound(gstate.cur_time);
 
 	if(!gstate.gameover){
 		// house
@@ -289,51 +327,154 @@ static void draw_frame(){
 		m_matrix = glm::scale(m_matrix, glm::vec3(50.0f, 5.0f, 1.0f));
 		mvp_matrix = vp_matrix * m_matrix;
 		glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
-		draw_house();
+		house_draw();
 
 		// androboy
 		m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(gstate.androboy_cur_x, -90 - (gstate.androboy_cur_line * 67.5), 0.0f));
 		m_matrix = glm::scale(m_matrix, glm::vec3(0.9f, 0.9f, 1.0f));
 		mvp_matrix = vp_matrix * m_matrix;
 		glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
-		draw_androboy_without_foots();
+		androboy_draw_without_foots();
 		int foot_clock = gstate.cur_time % 80;
 		if (foot_clock < 40) {
-			draw_androboy_right_foot();
+			androboy_draw_right_foot();
 			m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(gstate.androboy_cur_x, -90 - (gstate.androboy_cur_line * 67.5) + 0.25f * foot_clock, 0.0f));
 			m_matrix = glm::scale(m_matrix, glm::vec3(0.9f, 0.9f, 1.0f));
 			mvp_matrix = vp_matrix * m_matrix;
 			glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
-			draw_androboy_left_foot();
+			androboy_draw_left_foot();
 		}
 		else {
-			draw_androboy_left_foot();
+			androboy_draw_left_foot();
 			m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(gstate.androboy_cur_x, -90 - (gstate.androboy_cur_line * 67.5) + 0.25f * (foot_clock - 40), 0.0f));
 			m_matrix = glm::scale(m_matrix, glm::vec3(0.9, 0.9, 1.0f));
 			mvp_matrix = vp_matrix * m_matrix;
 			glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
-			draw_androboy_right_foot();
+			androboy_draw_right_foot();
 		}
 
 		// swords
-		std::vector<std::pair<float, float> > swords = get_cur_swords(gstate.cur_time);
+		std::vector<std::pair<float, float> > swords = swords_get(gstate.cur_time);
 		for (int i = 0; i < swords.size(); ++i) {
 			m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(swords[i].first, swords[i].second, 0.0f));
 			m_matrix = glm::scale(m_matrix, glm::vec3(2.2, 6.5, 1.0f));
 			mvp_matrix = vp_matrix * m_matrix;
 			glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
-			draw_sword();
+			sword_draw();
 		}
 
-		// cars
-		std::vector<std::pair<float, float> > cars = get_cur_cars(gstate.cur_time);
-		for (int i = 0; i < cars.size(); ++i) {
-			m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(cars[i].first, cars[i].second, 0.0f));
-			m_matrix = glm::scale(m_matrix, glm::vec3(2.0, 2.0, 1.0f));
-			mvp_matrix = vp_matrix * m_matrix;
-			glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
-			draw_car();
+		// check gameover
+		std::pair<float, float> crushed_car;
+		if(car_remove_crushed(gstate.cur_time, gstate.androboy_cur_line, 
+			gstate.androboy_cur_rightest, gstate.androboy_cur_leftest, &crushed_car)){
+			--gstate.lifecount;
+			if(gstate.lifecount > 0){
+				ioctl(gpad.fd, IOCTL_DEC_LIFECOUNT_NONBLOCK);
+			}
+			else{
+				ioctl(gpad.fd, IOCTL_GAMEOVER_NONBLOCK);
+				gstate.gameover = true;
+				gover_attrib.last_crushed_car = crushed_car;
+				gover_attrib.gameover_time = gstate.cur_time;
+				gover_attrib.gameover_swords = swords;
+
+				int ss = gover_attrib.gameover_swords.size();
+				float androboy_x = gstate.androboy_cur_x;
+				float androboy_y = -90 - (gstate.androboy_cur_line * 67.5);
+				gover_attrib.rotating_swords_cur_time.resize(ss, 0.0f);
+				gover_attrib.killing_swords_delta.resize(ss, 0.0f);
+				gover_attrib.rotating_swords_time_limit.resize(ss);
+				for (int i = 0; i < ss; ++i) {
+					float sword_x = gover_attrib.gameover_swords[i].first;
+					float sword_y = gover_attrib.gameover_swords[i].second;
+					float sword_angle = atanf((sword_y - androboy_y) / (sword_x - androboy_x));
+					sword_angle += sword_angle < 0 ? 270 * TO_RADIAN : 90 * TO_RADIAN;
+					gover_attrib.rotating_swords_time_limit[i] = sword_angle * TO_DEGREE;
+				}
+			}
 		}
+	}
+	else{
+		long long passed = gstate.cur_time - gover_attrib.gameover_time;
+		long long crushed_car_cur_time = std::min(180LL, passed);
+		long long gameover_sword_cur_time = std::min(1000LL, passed);
+		long long gameover_androboy_cur_time = std::min(90LL, passed);
+		int ss = gover_attrib.gameover_swords.size();
+		float androboy_x = gstate.androboy_cur_x;
+		float androboy_y = -90.0f - (gstate.androboy_cur_line * 67.5);
+
+		//draw stopped house
+		m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f * gstate.house_x, -10.0, 0.0f));
+		m_matrix = glm::scale(m_matrix, glm::vec3(50.0f, 5.0f, 1.0f));
+		mvp_matrix = vp_matrix * m_matrix;
+		glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
+		house_draw();
+
+		//draw crushed car
+		m_matrix = glm::translate(glm::mat4(1.0f), 
+			glm::vec3(gover_attrib.last_crushed_car.first + crushed_car_cur_time, 
+				gover_attrib.last_crushed_car.second + 100.0f * sinf(crushed_car_cur_time * TO_RADIAN), 0.0f));
+		m_matrix = glm::rotate(m_matrix, crushed_car_cur_time * TO_RADIAN, glm::vec3(0.0, 0.0, 1.0f));
+		m_matrix = glm::scale(m_matrix, glm::vec3(2.0f, 2.0f, 1.0f));
+		mvp_matrix = vp_matrix * m_matrix;
+		glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
+		car_draw();
+
+		//draw stopped sword
+		if (gameover_sword_cur_time < 100) {
+			for (int i = 0; i < ss; ++i) {
+				m_matrix = glm::translate(glm::mat4(1.0f), 
+					glm::vec3(gover_attrib.gameover_swords[i].first, gover_attrib.gameover_swords[i].second, 0.0f));
+				m_matrix = glm::scale(m_matrix, glm::vec3(2.2f, 6.5f, 1.0f));
+				mvp_matrix = vp_matrix * m_matrix;
+				glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
+				sword_draw();
+			}
+		}
+		//draw rotating sword
+		else if (gameover_sword_cur_time < 200) {
+			for (int i = 0; i < ss; ++i) {
+				float sword_x = gover_attrib.gameover_swords[i].first;
+				float sword_y = gover_attrib.gameover_swords[i].second;
+				gover_attrib.rotating_swords_cur_time[i] = std::min(gover_attrib.rotating_swords_time_limit[i], (float)passed);
+				m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(sword_x, sword_y, 0.0f));
+				m_matrix = glm::rotate(m_matrix, gover_attrib.rotating_swords_cur_time[i] * TO_RADIAN, glm::vec3(0.0f, 0.0f, 1.0f));
+				m_matrix = glm::scale(m_matrix, glm::vec3(2.2, 6.5, 1.0f));
+				mvp_matrix = vp_matrix * m_matrix;
+				glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
+				sword_draw();
+			}
+		}
+		//draw moving sword
+		else if (gameover_sword_cur_time <= 1000) {
+			for (int i = 0; i < ss; ++i) {
+				float sword_x = gover_attrib.gameover_swords[i].first;
+				float sword_y = gover_attrib.gameover_swords[i].second;
+				// retrace androboy
+				if (gover_attrib.rotating_swords_time_limit[i] >= 180.0f && sword_x + gover_attrib.killing_swords_delta[i] < androboy_x) 
+					gover_attrib.killing_swords_delta[i] += 4.0f;
+				if (180.0f > gover_attrib.rotating_swords_time_limit[i] && gover_attrib.rotating_swords_time_limit[i] >= 90.0f 
+					&& sword_x + gover_attrib.killing_swords_delta[i] > androboy_x)
+					gover_attrib.killing_swords_delta[i] -= 4.0f;
+				
+				float new_x = sword_x + gover_attrib.killing_swords_delta[i];
+				float new_y = (sword_y - androboy_y) / (sword_x - androboy_x) * (new_x - androboy_x) + androboy_y;
+				m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(new_x, new_y, 0.0f));
+				m_matrix = glm::rotate(m_matrix, gover_attrib.rotating_swords_time_limit[i] * TO_RADIAN, glm::vec3(0.0f, 0.0f, 1.0f));
+				m_matrix = glm::scale(m_matrix, glm::vec3(2.2, 6.5, 1.0f));
+				mvp_matrix = vp_matrix * m_matrix;
+				glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
+				sword_draw();
+			}
+		}
+
+		// draw died androboy
+		m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(androboy_x, androboy_y, 0.0f));
+		m_matrix = glm::rotate(m_matrix, gameover_androboy_cur_time * TO_RADIAN, glm::vec3(0.0f, 0.0f, 1.0f));
+		m_matrix = glm::scale(m_matrix, glm::vec3(0.9f, 0.9f, 1.0f));
+		mvp_matrix = vp_matrix * m_matrix;
+		glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
+		androboy_draw();
 	}
 }
 static void* render_loop(void* nouse){
@@ -372,14 +513,14 @@ void game1_create(){
 	pthread_mutex_init(&gstate.mutex, 0);
 	reset_ingame_attrib();
 
-	create_swords();
+	swords_create();
 }
 
 void game1_destroy(){
 	pthread_mutex_destroy(&gstate.mutex);
 	reset_ingame_attrib();
 
-	destroy_swords();
+	swords_destroy();
 
 	close(gpad.fd);
 }

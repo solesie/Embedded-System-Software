@@ -88,7 +88,7 @@ static GLuint load_shaders() {
 
 GLuint g1_shader_program;
 GLint g1_loc_position, g1_loc_mvp_matrix, g1_loc_primitive_color;
-void init_shaders(void) {
+void shaders_init(void) {
 	g1_shader_program = load_shaders();
 
 	glUseProgram(g1_shader_program);
@@ -101,7 +101,7 @@ void init_shaders(void) {
 	LOG_INFO("Init shader finish %d %d %d %d", g1_shader_program, g1_loc_mvp_matrix, g1_loc_primitive_color, g1_loc_position);
 }
 
-void del_shaders(void){
+void shaders_del(void){
 	if (g1_shader_program != 0) {
 		glDeleteProgram(g1_shader_program);
 		g1_shader_program = 0;

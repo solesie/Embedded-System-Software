@@ -24,7 +24,7 @@ static const GLfloat COLORS[4][3] = {
 
 static GLuint road_vb;
 
-void init_road(void) {
+void road_prepare(void) {
 	GLsizeiptr buffer_size = sizeof(ROAD) + sizeof(LINE1) + sizeof(LINE2) + sizeof(LINE3);
 
 	glGenBuffers(1, &road_vb);
@@ -36,7 +36,7 @@ void init_road(void) {
 	glBufferSubData(GL_ARRAY_BUFFER, sizeof(ROAD) + sizeof(LINE1) + sizeof(LINE2), sizeof(LINE3), LINE3);
 }
 
-void draw_road(void) {
+void road_draw(void) {
 	glBindBuffer(GL_ARRAY_BUFFER, road_vb);
 	glEnableVertexAttribArray(g1_loc_position);
 	glVertexAttribPointer(g1_loc_position, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
@@ -56,6 +56,6 @@ void draw_road(void) {
 	glDisableVertexAttribArray(g1_loc_position);
 }
 
-void del_road(void){
+void road_release(void){
 	glDeleteBuffers(1, &road_vb);
 }

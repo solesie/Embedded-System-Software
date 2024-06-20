@@ -27,7 +27,7 @@ const static GLfloat COLORS[5][3] = {
 
 static GLuint house_vb;
 
-void init_house(void ) {
+void house_prepare(void ) {
 	GLsizeiptr buffer_size = sizeof(ROOF) + sizeof(BODY) + sizeof(CHIMNEY) + sizeof(DOOR)
 		+ sizeof(WINDOW);
 
@@ -43,7 +43,7 @@ void init_house(void ) {
 		sizeof(WINDOW), WINDOW);
 }
 
-void draw_house(void) {
+void house_draw(void) {
 	glBindBuffer(GL_ARRAY_BUFFER, house_vb);
 	glEnableVertexAttribArray(g1_loc_position);
 	glVertexAttribPointer(g1_loc_position, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
@@ -62,6 +62,6 @@ void draw_house(void) {
 	glDisableVertexAttribArray(g1_loc_position);
 }
 
-void del_house(void){
+void house_release(void){
 	glDeleteBuffers(1, &house_vb);
 }

@@ -99,28 +99,28 @@ static float calc_cur_y(const struct sword* s, const long long cur_time) {
 	return Y_CENTER + normed_fabs_y;
 }
 
-void create_swords(void){
+void swords_create(void){
 	for (int i = 0; i <= 8; ++i) {
 		swords.push_back({-304 + i * 76, true});
 		swords.push_back({-304 + i * 76, false});
 	}
 }
 
-void destroy_swords(void){
+void swords_destroy(void){
 	swords.clear();
 }
 
 /* 
  * (x, y)
  */
-std::vector<std::pair<float, float> > get_cur_swords(long long cur_time){
+std::vector<std::pair<float, float> > swords_get(long long cur_time){
 	std::vector<std::pair<float, float> > ret;
 	for (int i = 0; i < swords.size(); ++i) 
 		ret.push_back(std::make_pair(calc_cur_x(&swords[i], cur_time), calc_cur_y(&swords[i], cur_time)));
 	return ret;
 }
 
-void init_sword(void) {
+void sword_prepare(void) {
 	GLsizeiptr buffer_size = sizeof(BODY) + sizeof(BODY2) + sizeof(HEAD) + sizeof(HEAD2) + sizeof(IN) + sizeof(DOWN) + sizeof(BODY_IN);
 
 	glGenBuffers(1, &sword_vb);
@@ -135,7 +135,7 @@ void init_sword(void) {
 	glBufferSubData(GL_ARRAY_BUFFER, sizeof(BODY) + sizeof(BODY2) + sizeof(HEAD) + sizeof(HEAD2) + sizeof(IN) + sizeof(DOWN), sizeof(BODY_IN), BODY_IN);
 }
 
-void draw_sword(void) {
+void sword_draw(void) {
 	glBindBuffer(GL_ARRAY_BUFFER, sword_vb);
 	glEnableVertexAttribArray(g1_loc_position);
 	glVertexAttribPointer(g1_loc_position, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
@@ -158,6 +158,6 @@ void draw_sword(void) {
 	glDisableVertexAttribArray(g1_loc_position);
 }
 
-void del_sword(void){
+void sword_release(void){
 	glDeleteBuffers(1, &sword_vb);
 }

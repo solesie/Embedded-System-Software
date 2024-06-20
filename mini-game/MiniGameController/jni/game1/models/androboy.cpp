@@ -48,7 +48,7 @@ const static GLfloat COLORS[10][3] = {
 
 static GLuint androboy_vb;
 
-void init_androboy(void) {
+void androboy_prepare(void) {
 	float head_rad = 25.0f, eye_rad = 3.0f;
 	for(int i = 0; i < 360; ++i){
 		if(i < 180){
@@ -86,7 +86,7 @@ void init_androboy(void) {
 		sizeof(RIGHT_FOOT), RIGHT_FOOT);
 }
 
-void draw_androboy_without_foots(void) {
+void androboy_draw_without_foots(void) {
 	glBindBuffer(GL_ARRAY_BUFFER, androboy_vb);
 	glEnableVertexAttribArray(g1_loc_position);
 	glVertexAttribPointer(g1_loc_position, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
@@ -111,7 +111,7 @@ void draw_androboy_without_foots(void) {
 	glDisableVertexAttribArray(g1_loc_position);
 }
 
-void draw_androboy_left_foot(void) { 
+void androboy_draw_left_foot(void) { 
 	glBindBuffer(GL_ARRAY_BUFFER, androboy_vb);
 	glEnableVertexAttribArray(g1_loc_position);
 	glVertexAttribPointer(g1_loc_position, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
@@ -122,7 +122,7 @@ void draw_androboy_left_foot(void) {
 	glDisableVertexAttribArray(g1_loc_position);
 }
 
-void draw_androboy_right_foot(void) {
+void androboy_draw_right_foot(void) {
 	glBindBuffer(GL_ARRAY_BUFFER, androboy_vb);
 	glEnableVertexAttribArray(g1_loc_position);
 	glVertexAttribPointer(g1_loc_position, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
@@ -133,7 +133,7 @@ void draw_androboy_right_foot(void) {
 	glDisableVertexAttribArray(g1_loc_position);
 }
 
-void draw_androboy(void){
+void androboy_draw(void){
 	glBindBuffer(GL_ARRAY_BUFFER, androboy_vb);
 	glEnableVertexAttribArray(g1_loc_position);
 	glVertexAttribPointer(g1_loc_position, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
@@ -162,6 +162,6 @@ void draw_androboy(void){
 	glDisableVertexAttribArray(g1_loc_position);
 }
 
-void del_androboy(void){
+void androboy_release(void){
 	glDeleteBuffers(1, &androboy_vb);
 }

@@ -47,15 +47,15 @@ static std::uniform_int_distribution<> line_dist_4(0, 3); // 4 lines
 static std::uniform_int_distribution<> vel_dist_4(1, 4); // 4 velocity
 static GLuint car_vb;
 
-void add_new_car(long long cur_time){
+void car_add(long long cur_time){
 	cars.push_back({cur_time, 3.0f*(vel_dist_4(gen)+1), line_dist_4(gen)});
 }
 
-void destroy_cars(void){
+void cars_free(void){
 	cars.clear();
 }
 
-void remove_out_of_bound_cars(long long cur_time){
+void cars_remove_out_of_bound(long long cur_time){
 	for (auto it = cars.begin(); it != cars.end();) {
 		if (2*CAR_INITIAL_X <= it->velocity * (cur_time - it->created_at))
 			it = cars.erase(it);
@@ -68,7 +68,7 @@ void remove_out_of_bound_cars(long long cur_time){
  * If there is crushed car, remove the car from list and initialize (x,y) at crushed_car
  * and return true.
  */
-bool remove_crushed_car(long long cur_time, int human_cur_line, int human_cur_rightest, int human_cur_leftest, 
+bool car_remove_crushed(long long cur_time, int androboy_cur_line, int androboy_cur_rightest, int androboy_cur_leftest, 
 		std::pair<float, float>* crushed_car) {
 	int car_rightest, car_leftest;
 	int moved_dist;
@@ -76,9 +76,9 @@ bool remove_crushed_car(long long cur_time, int human_cur_line, int human_cur_ri
 		moved_dist = it->velocity * (cur_time - it->created_at);
 		car_rightest = CAR_INITIAL_X - moved_dist + 16;
 		car_leftest = CAR_INITIAL_X - moved_dist - 16;
-		if (it->line == human_cur_line && 
-			((human_cur_leftest <= car_rightest && human_cur_rightest > car_leftest) || 
-				(human_cur_rightest >= car_leftest && human_cur_leftest < car_rightest))){
+		if (it->line == androboy_cur_line && 
+			((androboy_cur_leftest <= car_rightest && androboy_cur_rightest > car_leftest) || 
+				(androboy_cur_rightest >= car_leftest && androboy_cur_leftest < car_rightest))){
 			crushed_car->first = CAR_INITIAL_X - moved_dist;
 			crushed_car->second = -110 - (it->line * 67.5f);
 			it = cars.erase(it);
@@ -94,14 +94,14 @@ bool remove_crushed_car(long long cur_time, int human_cur_line, int human_cur_ri
 /*
  * (x, y)
  */
-std::vector<std::pair<float, float> > get_cur_cars(long long cur_time){
+std::vector<std::pair<float, float> > cars_get(long long cur_time){
 	std::vector<std::pair<float, float> > ret;
 	for(auto& c : cars)
 		ret.push_back(std::make_pair(CAR_INITIAL_X - c.velocity * (cur_time - c.created_at), -110 - (c.line * 67.5)));
 	return ret;
 }
 
-void init_car(void) {
+void car_prepare(void) {
 	GLsizeiptr buffer_size = sizeof(BODY) + sizeof(FRAME) + sizeof(WINDOW) + sizeof(LEFT_LIGHT)
 		+ sizeof(RIGHT_LIGHT) + sizeof(LEFT_WHEEL) + sizeof(RIGHT_WHEEL);
 
@@ -120,7 +120,7 @@ void init_car(void) {
 		+ sizeof(RIGHT_LIGHT) + sizeof(LEFT_WHEEL), sizeof(RIGHT_WHEEL), RIGHT_WHEEL);
 }
 
-void draw_car(void) {
+void car_draw(void) {
 	glBindBuffer(GL_ARRAY_BUFFER, car_vb);
 	glEnableVertexAttribArray(g1_loc_position);
 	glVertexAttribPointer(g1_loc_position, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
@@ -143,6 +143,6 @@ void draw_car(void) {
 	glDisableVertexAttribArray(g1_loc_position);
 }
 
-void del_car(void){
+void car_release(void){
 	glDeleteBuffers(1, &car_vb);
 }
