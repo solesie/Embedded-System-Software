@@ -9,85 +9,101 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.Toast;
-
-import android.opengl.GLES30;
-import android.content.Context;
-import android.app.ActivityManager;
-import android.content.pm.ConfigurationInfo;
 
 public class Game1Activity extends Activity implements SurfaceHolder.Callback {
+	private static native void nativeOnCreate();
+	private static native void nativeOnResume();
+	private static native void nativeOnPause();
+	private static native void nativeOnDestroy();
+	private static native void nativeSetSurface(Surface surface);
+	private static native void nativeRestartGame();
+	private static native boolean nativeWaitBackInterrupt();
+	
+	private static String TAG = "Game1Activity";
+	
+	class BackInterruptDetector extends Thread{
+		BackInterruptDetector(){}
+		
+		public void run(){
+			Log.i(TAG, "Interrupt Dectector started");
+			// Blocking manner
+			if(nativeWaitBackInterrupt()){
+				Log.i(TAG, "Waked up by interr");
+				// wake up
+				Intent intent = new Intent(Game1Activity.this, BackPopupActivity.class);
+				startActivity(intent);
+				overridePendingTransition(0, 0);
+			}
+			else{
+				Log.i(TAG, "Waked up by pause");
+			}
+		}
+	}
+	private BackInterruptDetector backInterruptDetector;
+	
+	static {
+		System.loadLibrary("mini-game");
+	}
 
-    public static native void nativeOnStart();
-    public static native void nativeOnResume();
-    public static native void nativeOnPause();
-    public static native void nativeOnStop();
-    public static native void nativeSetSurface(Surface surface);
-    private static String TAG = "Game1Activity";
-    static {
-        System.loadLibrary("mini-game");
-    }
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_game1);
+		Log.i(TAG, "onCreate()");
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_game1);
+		SurfaceView surfaceView = (SurfaceView)findViewById(R.id.surfaceview);
+		surfaceView.getHolder().addCallback(this);
+		
+		nativeOnCreate();
+	}
 
-        SurfaceView surfaceView = (SurfaceView)findViewById(R.id.surfaceview);
-        surfaceView.getHolder().addCallback(this);
-        surfaceView.setOnClickListener(new OnClickListener() {
-        public void onClick(View view) {
-            Intent intent = new Intent(Game1Activity.this, BackPopupActivity.class);
-            startActivity(intent);
-            overridePendingTransition(0, 0);
-        }});
-    }
-    @Override
-    protected void onStart() {
-        super.onStart();
-        Log.i(TAG, "onStart()");
-        nativeOnStart();
-    }
+	@Override
+	protected void onResume() {
+		super.onResume();
+		Log.i(TAG, "onResume()");
+		
+		backInterruptDetector = new BackInterruptDetector();
+		backInterruptDetector.setDaemon(true);
+		backInterruptDetector.start();
+		
+		nativeOnResume();
+	}
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        Log.i(TAG, "onResume()");
-        nativeOnResume();
-    }
+	@Override
+	protected void onNewIntent(Intent intent) {
+		super.onNewIntent(intent);
+		setIntent(intent);
+		if (getIntent().getBooleanExtra("EXIT", false)) {
+			Log.i(TAG, "onNewIntent(EXIT)");
+			finish();
+		}
+		else if(getIntent().getBooleanExtra("RESTART", false)){
+			Log.i(TAG, "onNewIntent(RESTART)");
+			nativeRestartGame();
+		}
+	}
 
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        if (getIntent().getBooleanExtra("EXIT", false)) {
-            finish();
-        }
-    }
+	@Override
+	protected void onPause() {
+		super.onPause();
+		Log.i(TAG, "onPause()");
+		nativeOnPause();
+	}
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        Log.i(TAG, "onPause()");
-        nativeOnPause();
-    }
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		Log.i(TAG, "onDestroy()");
+		nativeOnDestroy();
+	}
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        Log.i(TAG, "onStop()");
-        nativeOnStop();
-    }
+	public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
+		nativeSetSurface(holder.getSurface());
+	}
 
-    public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
-        nativeSetSurface(holder.getSurface());
-    }
+	public void surfaceCreated(SurfaceHolder holder) {}
 
-    public void surfaceCreated(SurfaceHolder holder) {
-
-    }
-
-    public void surfaceDestroyed(SurfaceHolder holder) {
-        nativeSetSurface(null);
-    }
+	public void surfaceDestroyed(SurfaceHolder holder) {
+		nativeSetSurface(null);
+	}
 }

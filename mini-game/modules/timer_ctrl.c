@@ -8,13 +8,13 @@
 #include <linux/gpio.h>
 #include <linux/io.h>
 #include <linux/irq.h>
-#include "../logging.h"
+#include "logging.h"
 
 enum dot_shape{
 	ZERO = 0, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, BLANK, DOT_SHAPE_CNT
 };
 
-struct single_thread_wq_elem{
+struct wq_elem{
 	struct work_struct work;
 	unsigned int data;
 };
@@ -47,12 +47,8 @@ static void fpga_timer_callback(unsigned long unused);
 
 static void fpga_timer_do_wq(struct work_struct* work);
 
-// MMIO
 static unsigned char *iom_fpga_dot_addr;
 static unsigned char *iom_fpga_fnd_addr;
-// Workqueue
-static struct workqueue_struct* single_thread_wq;
-// Timer
 static struct timer_list fpga_timer;
 
 static unsigned int cur_time; // 0<=time<TIME_MAX
@@ -74,29 +70,33 @@ static void fpga_print_fnd(unsigned int time){
 
 /* 
  * It is a callback function that is called every 0.1 seconds and modifies the FPGA.
+ * The shared data, fpga_timer, is accessed in a top half (TH) context, but since it is used by timer,
+ * spin_lock is not considered.
  */
 static void fpga_timer_callback(unsigned long unused){
-	struct single_thread_wq_elem* w; 
+	struct wq_elem* w; 
 
 	cur_time = (cur_time + 1) % TIME_MAX;
 
-	w = kmalloc(sizeof(struct single_thread_wq_elem), GFP_ATOMIC);
+	w = kmalloc(sizeof(struct wq_elem), GFP_ATOMIC);
 	if(!w){
 		LOG(LOG_LEVEL_INFO, "Heap lack");
 		return;
 	}
 	w->data = cur_time;
 	INIT_WORK(&w->work, fpga_timer_do_wq);
-	queue_work(single_thread_wq, &w->work);
+	queue_work(system_wq, &w->work);
 	return;
 }
 
 /*
  * Work of fpga_timer_callback().
  * This function prints fpga and adds timer.
+ * The shared data, fpga_timer, is accessed in a bottom half context, but since it is used by the timer, 
+ * interrupt synchronization(e.g.irq_local_save()) is not considered.
  */
 static void fpga_timer_do_wq(struct work_struct* work){
-	struct single_thread_wq_elem* w = container_of(work, struct single_thread_wq_elem, work);
+	struct wq_elem* w = container_of(work, struct wq_elem, work);
 	fpga_print_dot((w->data % 600) % 10);
 	fpga_print_fnd(w->data);
 	fpga_timer.expires = get_jiffies_64() + HZ/10;
@@ -106,7 +106,7 @@ static void fpga_timer_do_wq(struct work_struct* work){
 }
 
 /* 
- * Called once by module_init. 
+ * Called once by module_init.
  * Return 0 on Error.
  */
 int timer_init(void){
@@ -115,30 +115,38 @@ int timer_init(void){
 	iom_fpga_fnd_addr = ioremap(IOM_FND_ADDRESS, 0x4);
 	// init timer
 	init_timer(&fpga_timer);
-	// init wq
-	single_thread_wq = create_singlethread_workqueue("single_thread_wq");
-	if(!single_thread_wq){
-		LOG(LOG_LEVEL_INFO, "Heap lack");
-		return 0;
-	}
+	cur_time = 0;
 	return 1;
 }
 
 /* 
- * Called once by module_exit. 
+ * Called once by module_exit.
  */
-void timer_del(void){
+void timer_exit(void){
 	// timer
 	del_timer_sync(&fpga_timer);
 	cur_time = 0;
 	fpga_print_dot(BLANK);
-	fpga_print_fnd(cur_time);
+	fpga_print_fnd(0);
 	// wq
-	flush_workqueue(single_thread_wq);
-	destroy_workqueue(single_thread_wq);
+	flush_workqueue(system_wq);
 	// MMIO
 	iounmap(iom_fpga_dot_addr);
 	iounmap(iom_fpga_fnd_addr);
+}
+
+void timer_reset(void){
+	del_timer_sync(&fpga_timer);
+	cur_time = 0;
+	fpga_print_dot(ZERO);
+	fpga_print_fnd(0);
+}
+
+void timer_off(void){
+	del_timer_sync(&fpga_timer);
+	cur_time = 0;
+	fpga_print_dot(BLANK);
+	fpga_print_fnd(0);
 }
 
 void timer_run(void){

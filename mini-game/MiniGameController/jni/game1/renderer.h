@@ -4,11 +4,13 @@
 #include <android/native_window.h> 
 #include <android/native_window_jni.h>
 
-void create_game1(void);
-void destroy_game1(void);
-void del_egl(void);
-void init_egl(ANativeWindow*);
-void on_resume(void);
-void on_pause(void);
+void game1_create(void);
+void game1_destroy(void);
+void game1_del_surface(void);
+void game1_set_surface(ANativeWindow*);
+void game1_resume(void);
+void game1_pause(void);
+void game1_restart(void);
+bool game1_wait_back_interrupt(void);
 
 #endif // GAME1_RENDERER_H

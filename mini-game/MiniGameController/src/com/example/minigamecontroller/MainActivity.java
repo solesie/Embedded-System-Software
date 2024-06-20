@@ -12,9 +12,9 @@ public class MainActivity extends Activity {
 	
 	private static String TAG = "MainActivity";
 	
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-    	super.onCreate(savedInstanceState);
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
 		Log.i(TAG, "onCreate()");

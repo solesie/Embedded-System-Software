@@ -39,10 +39,10 @@ void init_road(void) {
 void draw_road(void) {
 	glBindBuffer(GL_ARRAY_BUFFER, road_vb);
 	glEnableVertexAttribArray(g1_loc_position);
-    glVertexAttribPointer(g1_loc_position, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+	glVertexAttribPointer(g1_loc_position, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 
-    glUniform3fv(g1_loc_primitive_color, 1, COLORS[ROAD_ROAD]);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+	glUniform3fv(g1_loc_primitive_color, 1, COLORS[ROAD_ROAD]);
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
 	glLineWidth(6.0);
 	glUniform3fv(g1_loc_primitive_color, 1, COLORS[ROAD_LINE1]);

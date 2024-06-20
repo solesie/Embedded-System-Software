@@ -22,7 +22,7 @@ struct stopwatch{
 	int is_over; // boolean
 };
 
-struct single_thread_wq_elem{
+struct wq_elem{
 	struct work_struct work;
 	struct stopwatch data;
 };
@@ -118,7 +118,7 @@ static void fpga_print_fnd(unsigned int time){
 static irqreturn_t home_inter_handler(int irq, void* dev_id){
 	int v = gpio_get_value(IMX_GPIO_NR(1, 11));
 	unsigned int cur = get_jiffies_64();
-	struct single_thread_wq_elem* w;
+	struct wq_elem* w;
 	// FALLING: v = 0, RISING: v = 1
 	if(v == 0){
 		// FALLING -> FALLING ignored
@@ -138,7 +138,7 @@ static irqreturn_t home_inter_handler(int irq, void* dev_id){
 	home_prev_pressed = cur;
 	sw.is_started = 1;
 	
-	w = kmalloc(sizeof(struct single_thread_wq_elem), GFP_ATOMIC);
+	w = kmalloc(sizeof(struct wq_elem), GFP_ATOMIC);
 	if(!w) {
 		LOG(LOG_LEVEL_INFO, "Heap lack");
 		return IRQ_HANDLED;
@@ -157,7 +157,7 @@ static irqreturn_t home_inter_handler(int irq, void* dev_id){
 static irqreturn_t back_inter_handler(int irq, void* dev_id){
 	int v = gpio_get_value(IMX_GPIO_NR(1, 12));
 	unsigned int cur = get_jiffies_64();
-	struct single_thread_wq_elem* w;
+	struct wq_elem* w;
 	if(v == 0){
 		if(back_prev_released < back_prev_pressed) return IRQ_HANDLED;
 		if(cur - back_prev_released <= DEBOUNCING) return IRQ_HANDLED;
@@ -173,7 +173,7 @@ static irqreturn_t back_inter_handler(int irq, void* dev_id){
 	back_prev_pressed = cur;
 	sw.is_paused = !sw.is_paused;
 	
-	w = kmalloc(sizeof(struct single_thread_wq_elem), GFP_ATOMIC);
+	w = kmalloc(sizeof(struct wq_elem), GFP_ATOMIC);
 	if(!w) {
 		LOG(LOG_LEVEL_INFO, "Heap lack");
 		return IRQ_HANDLED;
@@ -191,7 +191,7 @@ static irqreturn_t back_inter_handler(int irq, void* dev_id){
 static irqreturn_t volup_inter_handler(int irq, void* dev_id){
 	int v = gpio_get_value(IMX_GPIO_NR(2, 15));
 	unsigned int cur = get_jiffies_64();
-	struct single_thread_wq_elem* w;
+	struct wq_elem* w;
 	if(v == 0){
 		if(volup_prev_released < volup_prev_pressed) return IRQ_HANDLED;
 		if(cur - volup_prev_released <= DEBOUNCING) return IRQ_HANDLED;
@@ -209,7 +209,7 @@ static irqreturn_t volup_inter_handler(int irq, void* dev_id){
 	sw.is_started = 0;
 	sw.is_paused = 0;
 	
-	w = kmalloc(sizeof(struct single_thread_wq_elem), GFP_ATOMIC);
+	w = kmalloc(sizeof(struct wq_elem), GFP_ATOMIC);
 	if(!w){
 		LOG(LOG_LEVEL_INFO, "Heap lack");
 		return IRQ_HANDLED;
@@ -227,7 +227,7 @@ static irqreturn_t volup_inter_handler(int irq, void* dev_id){
 static irqreturn_t voldown_inter_handler(int irq, void* dev_id){
 	int v = gpio_get_value(IMX_GPIO_NR(5, 14));
 	unsigned int cur = get_jiffies_64();
-	struct single_thread_wq_elem* w = kmalloc(sizeof(struct single_thread_wq_elem), GFP_ATOMIC);
+	struct wq_elem* w = kmalloc(sizeof(struct wq_elem), GFP_ATOMIC);
 	if(!w){
 		LOG(LOG_LEVEL_INFO, "Heap lack");
 		return IRQ_HANDLED;
@@ -255,7 +255,7 @@ static irqreturn_t voldown_inter_handler(int irq, void* dev_id){
  * It is a callback function that is called every 0.1 seconds and modifies the FPGA.
  */
 static void fpga_timer_callback(unsigned long unused){
-	struct single_thread_wq_elem* w; 
+	struct wq_elem* w; 
 	
 	// Managing timers in the bottom half can lead to a situation 
 	// where a timer that should not be executed might run 
@@ -267,7 +267,7 @@ static void fpga_timer_callback(unsigned long unused){
 	
 	sw.cur_time = (sw.cur_time + 1) % TIME_MAX;
 	
-	w = kmalloc(sizeof(struct single_thread_wq_elem), GFP_ATOMIC);
+	w = kmalloc(sizeof(struct wq_elem), GFP_ATOMIC);
 	if(!w){
 		LOG(LOG_LEVEL_INFO, "Heap lack");
 		return;
@@ -282,14 +282,14 @@ static void fpga_timer_callback(unsigned long unused){
  * It is a callback function that conducts a termination countdown.
  */
 static void over_timer_callback(unsigned long unused){
-	struct single_thread_wq_elem* w; 
+	struct wq_elem* w; 
 	
 	// Consider the race condition.
 	if(!sw.is_over_timer_running) return;
 
 	sw.is_over = 1;
 	
-	w = kmalloc(sizeof(struct single_thread_wq_elem), GFP_ATOMIC);
+	w = kmalloc(sizeof(struct wq_elem), GFP_ATOMIC);
 	if(!w){
 		LOG(LOG_LEVEL_INFO, "Heap lack");
 		return;
@@ -304,7 +304,7 @@ static void over_timer_callback(unsigned long unused){
  * This function prints dot(ZERO) and start fpga_timer.
  */
 static void home_do_wq(struct work_struct* work){
-	struct single_thread_wq_elem* w = container_of(work, struct single_thread_wq_elem, work);
+	struct wq_elem* w = container_of(work, struct wq_elem, work);
 	fpga_print_dot(ZERO);
 	fpga_timer.expires = get_jiffies_64() + HZ/10;
 	fpga_timer.function = fpga_timer_callback;
@@ -317,7 +317,7 @@ static void home_do_wq(struct work_struct* work){
  * This function deletes or restarts fpga_timer.
  */
 static void back_do_wq(struct work_struct* work){
-	struct single_thread_wq_elem* w = container_of(work, struct single_thread_wq_elem, work);
+	struct wq_elem* w = container_of(work, struct wq_elem, work);
 	if(w->data.is_paused){
 		del_timer_sync(&fpga_timer);
 	}
@@ -334,7 +334,7 @@ static void back_do_wq(struct work_struct* work){
  * This function deletes fpga_timer and reset fpga.
  */
 static void volup_do_wq(struct work_struct* work){
-	struct single_thread_wq_elem* w = container_of(work, struct single_thread_wq_elem, work);
+	struct wq_elem* w = container_of(work, struct wq_elem, work);
 	del_timer_sync(&fpga_timer);
 	fpga_print_fnd(w->data.cur_time);
 	fpga_print_dot(ZERO);
@@ -347,7 +347,7 @@ static void volup_do_wq(struct work_struct* work){
  * In released case, over_timer is deleted.
  */
 static void voldown_do_wq(struct work_struct* work){
-	struct single_thread_wq_elem* w = container_of(work, struct single_thread_wq_elem, work);
+	struct wq_elem* w = container_of(work, struct wq_elem, work);
 	if(w->data.is_over_timer_running){
 		over_timer.expires = get_jiffies_64() + 3 * HZ;
 		over_timer.function = over_timer_callback;
@@ -364,7 +364,7 @@ static void voldown_do_wq(struct work_struct* work){
  * This function prints fpga and adds timer.
  */
 static void fpga_timer_do_wq(struct work_struct* work){
-	struct single_thread_wq_elem* w = container_of(work, struct single_thread_wq_elem, work);
+	struct wq_elem* w = container_of(work, struct wq_elem, work);
 	fpga_print_dot((w->data.cur_time % 600) % 10);
 	fpga_print_fnd(w->data.cur_time);
 	fpga_timer.expires = get_jiffies_64() + HZ/10;
@@ -378,7 +378,7 @@ static void fpga_timer_do_wq(struct work_struct* work){
  * Reset fpga and wake kernel process.
  */
 static void over_timer_do_wq(struct work_struct* work){
-	struct single_thread_wq_elem* w = container_of(work, struct single_thread_wq_elem, work);
+	struct wq_elem* w = container_of(work, struct wq_elem, work);
 	complete(&over);
 	kfree(w);
 }

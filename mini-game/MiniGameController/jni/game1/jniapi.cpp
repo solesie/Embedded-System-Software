@@ -7,34 +7,44 @@
 
 static ANativeWindow* window;
 
-JNIEXPORT void JNICALL Java_com_example_minigamecontroller_Game1Activity_nativeOnStart(JNIEnv* jenv, jobject obj){
-    LOG_INFO("nativeOnStart");
-    create_game1();
+JNIEXPORT void JNICALL Java_com_example_minigamecontroller_Game1Activity_nativeOnCreate(JNIEnv* jenv, jobject obj){
+	LOG_INFO("nativeOnCreate");
+	game1_create();
 }
 
-JNIEXPORT void JNICALL Java_com_example_minigamecontroller_Game1Activity_nativeOnStop(JNIEnv* jenv, jobject obj){
-    LOG_INFO("nativeOnStop");
-    destroy_game1();
+JNIEXPORT void JNICALL Java_com_example_minigamecontroller_Game1Activity_nativeOnDestroy(JNIEnv* jenv, jobject obj){
+	LOG_INFO("nativeOnDestroy");
+	game1_destroy();
 }
 
 JNIEXPORT void JNICALL Java_com_example_minigamecontroller_Game1Activity_nativeOnResume(JNIEnv* env, jobject obj){
-    LOG_INFO("nativeOnResume");
-    on_resume();
+	LOG_INFO("nativeOnResume");
+	game1_resume();
 }
 
 JNIEXPORT void JNICALL Java_com_example_minigamecontroller_Game1Activity_nativeOnPause(JNIEnv* env, jobject obj){
-    LOG_INFO("nativeOnPause");
-    on_pause();
+	LOG_INFO("nativeOnPause");
+	game1_pause();
 }
 
 JNIEXPORT void JNICALL Java_com_example_minigamecontroller_Game1Activity_nativeSetSurface(JNIEnv* env, jobject obj, jobject surface){
-    if (surface != 0) {
-        window = ANativeWindow_fromSurface(env, surface);
-        LOG_INFO("Got window %p", window);
-        init_egl(window);
-    } 
-    else {
-        del_egl();
-        LOG_INFO("Releasing window");
-    }
+	if (surface != 0) {
+		window = ANativeWindow_fromSurface(env, surface);
+		LOG_INFO("Got window %p", window);
+		game1_set_surface(window);
+	} 
+	else {
+		game1_del_surface();
+		LOG_INFO("Releasing window");
+	}
+}
+
+JNIEXPORT void JNICALL Java_com_example_minigamecontroller_Game1Activity_nativeRestartGame(JNIEnv* env, jobject obj){
+	LOG_INFO("nativeRestartGame");
+	game1_restart();
+}
+
+JNIEXPORT jboolean JNICALL Java_com_example_minigamecontroller_Game1Activity_nativeWaitBackInterrupt(JNIEnv* env, jobject obj){
+	LOG_INFO("nativeWaitBackInterrupt");
+	return game1_wait_back_interrupt();
 }

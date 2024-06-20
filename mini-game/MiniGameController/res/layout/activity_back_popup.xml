@@ -19,10 +19,17 @@
             android:text="resume" />
 
         <Button
+            android:id="@+id/restartButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="restart" />
+
+        <Button
             android:id="@+id/closeButton"
             android:layout_width="124dp"
             android:layout_height="wrap_content"
             android:text="close" />
+
     </LinearLayout>
 
 </LinearLayout>

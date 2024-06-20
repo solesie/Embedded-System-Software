@@ -24,13 +24,13 @@ const static GLfloat DOWN[4][2] = { { -2.0, -6.0 },{ -4.0, -8.0 },{ 4.0, -8.0 },
 const static GLfloat BODY_IN[4][2] = { { 0.0, -1.0 },{ -1.0, -2.732 },{ 0.0, -4.464 },{ 1.0, -2.732 } };
 
 const static GLfloat COLORS[7][3] = {
-    { 139 / 255.0f, 69 / 255.0f, 19 / 255.0f },
-    { 139 / 255.0f, 69 / 255.0f, 19 / 255.0f },
-    { 155 / 255.0f, 155 / 255.0f, 155 / 255.0f },
-    { 155 / 255.0f, 155 / 255.0f, 155 / 255.0f },
-    { 0 / 255.0f, 0 / 255.0f, 0 / 255.0f },
-    { 139 / 255.0f, 69 / 255.0f, 19 / 255.0f },
-    { 255 / 255.0f, 0 / 255.0f, 0 / 255.0f }
+	{ 139 / 255.0f, 69 / 255.0f, 19 / 255.0f },
+	{ 139 / 255.0f, 69 / 255.0f, 19 / 255.0f },
+	{ 155 / 255.0f, 155 / 255.0f, 155 / 255.0f },
+	{ 155 / 255.0f, 155 / 255.0f, 155 / 255.0f },
+	{ 0 / 255.0f, 0 / 255.0f, 0 / 255.0f },
+	{ 139 / 255.0f, 69 / 255.0f, 19 / 255.0f },
+	{ 255 / 255.0f, 0 / 255.0f, 0 / 255.0f }
 };
 
 // eclipse figure
@@ -40,7 +40,7 @@ const static int SPEED = 3;
 const static int Y_CENTER = 180;
 
 struct sword{
-    int initail_x;
+	int initail_x;
 	bool is_initially_front;
 };
 
@@ -52,51 +52,51 @@ static std::vector<struct sword> swords;
  * Define functions to calculate the path on the ellipse.
  */
 inline static float calc_eclipse_normed_fabs_y(const float cur_x){
-    return sqrtf((-(float)B * B) / ((float)A * A) * (cur_x * cur_x) + (float)B * B);
+	return sqrtf((-(float)B * B) / ((float)A * A) * (cur_x * cur_x) + (float)B * B);
 }
 static float calc_cur_x(const struct sword* s, const long long cur_time){
-    const long long moved_dist = SPEED * cur_time;
-    // bottom of eclipse
-    if(!s->is_initially_front){
-        const int dist_to_minus_a = A + s->initail_x;
-        if(moved_dist - dist_to_minus_a < 0)
-            return s->initail_x - moved_dist;
-        const int remainder = (moved_dist - dist_to_minus_a) % (4*A);
-        if(remainder >= 2*A)
-            return A - remainder % (2*A);
-        return -A + remainder % (2*A);
-    }
-    // top of eclipse
-    const int dist_to_plus_a = A - s->initail_x;
-    if(moved_dist - dist_to_plus_a < 0)
-        return s->initail_x + moved_dist;
-    const int remainder = (moved_dist - dist_to_plus_a) % (4*A);
-    if(remainder >= 2*A)
-        return -A + remainder % (2*A);
-    return A - remainder % (2*A);
+	const long long moved_dist = SPEED * cur_time;
+	// bottom of eclipse
+	if(!s->is_initially_front){
+		const int dist_to_minus_a = A + s->initail_x;
+		if(moved_dist - dist_to_minus_a < 0)
+			return s->initail_x - moved_dist;
+		const int remainder = (moved_dist - dist_to_minus_a) % (4*A);
+		if(remainder >= 2*A)
+			return A - remainder % (2*A);
+		return -A + remainder % (2*A);
+	}
+	// top of eclipse
+	const int dist_to_plus_a = A - s->initail_x;
+	if(moved_dist - dist_to_plus_a < 0)
+		return s->initail_x + moved_dist;
+	const int remainder = (moved_dist - dist_to_plus_a) % (4*A);
+	if(remainder >= 2*A)
+		return -A + remainder % (2*A);
+	return A - remainder % (2*A);
 }
 static float calc_cur_y(const struct sword* s, const long long cur_time) {
-    const long long moved_dist = SPEED * cur_time;
-    const float cur_x = calc_cur_x(s, cur_time);
-    const float normed_fabs_y = calc_eclipse_normed_fabs_y(cur_x);
-    // bottom of eclipse
-    if (!s->is_initially_front) {
-        const int dist_to_minus_a = A + s->initail_x;
-        if(moved_dist - dist_to_minus_a < 0)
-            return Y_CENTER + normed_fabs_y;
-        const int remainder = (moved_dist - dist_to_minus_a) % (4*A);
-        if(remainder >= 2*A)
-            return Y_CENTER + normed_fabs_y;
-        return Y_CENTER - normed_fabs_y;
-    }
-    // top of eclipse
-    const int dist_to_plus_a = A - s->initail_x;
-    if(moved_dist - dist_to_plus_a < 0)
-        return Y_CENTER - normed_fabs_y;
-    const int remainder = (moved_dist - dist_to_plus_a) % (4*A);
-    if(remainder >= 2*A)
-        return Y_CENTER - normed_fabs_y;
-    return Y_CENTER + normed_fabs_y;
+	const long long moved_dist = SPEED * cur_time;
+	const float cur_x = calc_cur_x(s, cur_time);
+	const float normed_fabs_y = calc_eclipse_normed_fabs_y(cur_x);
+	// bottom of eclipse
+	if (!s->is_initially_front) {
+		const int dist_to_minus_a = A + s->initail_x;
+		if(moved_dist - dist_to_minus_a < 0)
+			return Y_CENTER + normed_fabs_y;
+		const int remainder = (moved_dist - dist_to_minus_a) % (4*A);
+		if(remainder >= 2*A)
+			return Y_CENTER + normed_fabs_y;
+		return Y_CENTER - normed_fabs_y;
+	}
+	// top of eclipse
+	const int dist_to_plus_a = A - s->initail_x;
+	if(moved_dist - dist_to_plus_a < 0)
+		return Y_CENTER - normed_fabs_y;
+	const int remainder = (moved_dist - dist_to_plus_a) % (4*A);
+	if(remainder >= 2*A)
+		return Y_CENTER - normed_fabs_y;
+	return Y_CENTER + normed_fabs_y;
 }
 
 void create_swords(void){
@@ -114,10 +114,10 @@ void destroy_swords(void){
  * (x, y)
  */
 std::vector<std::pair<float, float> > get_cur_swords(long long cur_time){
-    std::vector<std::pair<float, float> > ret;
-    for (int i = 0; i < swords.size(); ++i) 
-        ret.push_back(std::make_pair(calc_cur_x(&swords[i], cur_time), calc_cur_y(&swords[i], cur_time)));
-    return ret;
+	std::vector<std::pair<float, float> > ret;
+	for (int i = 0; i < swords.size(); ++i) 
+		ret.push_back(std::make_pair(calc_cur_x(&swords[i], cur_time), calc_cur_y(&swords[i], cur_time)));
+	return ret;
 }
 
 void init_sword(void) {
