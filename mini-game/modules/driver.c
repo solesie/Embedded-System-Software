@@ -15,18 +15,20 @@
 #include <linux/delay.h>
 #include "timer_ctrl.h"
 #include "switch_ctrl.h"
-#include "lifecount_ctrl.h"
+#include "text_lcd_ctrl.h"
+#include "led_ctrl.h"
 #include "interrupt_ctrl.h"
 #include "logging.h"
 
 #define MINIGAME_MAJOR 242
 #define MINIGAME_NAME "minigame"
-#define IOCTL_RUN_NONBLOCK _IO(MINIGAME_MAJOR, 0)
-#define IOCTL_STOP_NONBLOCK _IO(MINIGAME_MAJOR, 1)
-#define IOCTL_RESET_NONBLOCK _IO(MINIGAME_MAJOR, 2)
-#define IOCTL_DEC_LIFECOUNT_NONBLOCK _IO(MINIGAME_MAJOR, 3)
-#define IOCTL_GAMEOVER_NONBLOCK _IO(MINIGAME_MAJOR, 4)
-#define IOCTL_WAIT_BACK_INTERRUPT _IOR(MINIGAME_MAJOR, 5, int)
+#define IOCTL_RUN_TIMER_NONBLOCK _IO(MINIGAME_MAJOR, 0)
+#define IOCTL_STOP_TIMER_NONBLOCK _IO(MINIGAME_MAJOR, 1)
+#define IOCTL_OFF_TIMER_NONBLOCK _IO(MINIGAME_MAJOR, 2)
+#define IOCTL_RESET_TIMER_NONBLOCK _IO(MINIGAME_MAJOR, 3)
+#define IOCTL_SET_LED_NONBLOCK _IOW(MINIGAME_MAJOR, 4, int)
+#define IOCTL_SET_TEXT_LCD_NONBLOCK _IOW(MINIGAME_MAJOR, 5, char*)
+#define IOCTL_WAIT_BACK_INTERRUPT _IOR(MINIGAME_MAJOR, 6, int)
 
 const static unsigned int NUM_OF_DEV = 1;
 
@@ -40,9 +42,6 @@ static int open(struct inode* inode, struct file* fp){
 		return -EBUSY;
 	try_module_get(THIS_MODULE);
 
-	lifecount_reset();
-	timer_reset();
-
 	interrupt_request();
 
 	return 0;
@@ -51,8 +50,9 @@ static int open(struct inode* inode, struct file* fp){
 static int close(struct inode* inode, struct file* fp){
 	interrupt_free();
 	
-	lifecount_off();
 	timer_off();
+	text_lcd_set("");
+	led_set(0);
 
 	atomic_set(&already_open, 0);
 	module_put(THIS_MODULE);
@@ -61,12 +61,14 @@ static int close(struct inode* inode, struct file* fp){
 }
 
 static long ioctl(struct file* fp, unsigned int cmd, unsigned long arg){
+	char text[TEXT_LCD_MAX_BUFF + 1] = {};
+	int led;
 	int waked_by_intr;
 	switch(cmd){
-		case IOCTL_RUN_NONBLOCK:
+		case IOCTL_RUN_TIMER_NONBLOCK:
 			timer_run();
 			return 0;
-		case IOCTL_STOP_NONBLOCK:
+		case IOCTL_STOP_TIMER_NONBLOCK:
 			timer_pause();
 			// When the app is forcefully terminated (even if onDestroy() is not called in Java), 
 			// it has been observed that the close() function is invoked. 
@@ -75,16 +77,22 @@ static long ioctl(struct file* fp, unsigned int cmd, unsigned long arg){
 			// This seems to be due to the influence of Java Garbage Collection.
 			interrupt_wake_back_waiting_thread();
 			return 0;
-		case IOCTL_RESET_NONBLOCK:
-			lifecount_reset();
+		case IOCTL_OFF_TIMER_NONBLOCK:
+			timer_off();
+			return 0;
+		case IOCTL_RESET_TIMER_NONBLOCK:
 			timer_reset();
 			return 0;
-		case IOCTL_DEC_LIFECOUNT_NONBLOCK:
-			lifecount_decrease();
+		case IOCTL_SET_LED_NONBLOCK:
+			if(copy_from_user(&led, (void __user*)arg, sizeof(led)))
+				return -EFAULT;
+			led_set(led);
 			return 0;
-		case IOCTL_GAMEOVER_NONBLOCK:
-			lifecount_gameover();
-			timer_off();
+		case IOCTL_SET_TEXT_LCD_NONBLOCK:
+			if(copy_from_user(text, (char __user*)arg, TEXT_LCD_MAX_BUFF + 1))
+				return -EFAULT;
+			text[TEXT_LCD_MAX_BUFF] = 0;
+			text_lcd_set(text);
 			return 0;
 		case IOCTL_WAIT_BACK_INTERRUPT:
 			waked_by_intr = interrupt_wait_back_intr();
@@ -139,7 +147,8 @@ static int __init mg_init(void){
 
 	timer_init();
 	push_switch_init();
-	lifecount_init();
+	led_init();
+	text_lcd_init();
 	interrupt_init();
 
 	LOG(LOG_LEVEL_INFO, "Driver %s(major: %d, minor: %d) registered"
@@ -164,7 +173,8 @@ error:
 static void __exit mg_exit(void){
 	timer_exit();
 	push_switch_exit();
-	lifecount_exit();
+	text_lcd_exit();
+	led_exit();
 
 	device_destroy(minigame_class, minigame_devt);
 	class_destroy(minigame_class);

@@ -17,7 +17,7 @@ public class BackPopupActivity extends Activity {
 		setContentView(R.layout.activity_back_popup);
 		
 		Button resumeButton = (Button) findViewById(R.id.resumeButton);
-		Button closeButton = (Button) findViewById(R.id.closeButton);
+		Button exitButton = (Button) findViewById(R.id.exitButton);
 		Button restartButton = (Button) findViewById(R.id.restartButton);
 		
 		// resumeButton click listener
@@ -25,13 +25,17 @@ public class BackPopupActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				Log.i(TAG, "resumeButton clicked");
+				Intent intent = new Intent(BackPopupActivity.this, Game1Activity.class);
+				// reuse current Game1Activity
+				intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+				intent.putExtra("RESUME", true);
+				startActivity(intent);
 				finish();
-				overridePendingTransition(0, 0);
 			}
 		});
 
 		// closeButton click listener
-		closeButton.setOnClickListener(new View.OnClickListener() {
+		exitButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
 				Log.i(TAG, "closeButton clicked");

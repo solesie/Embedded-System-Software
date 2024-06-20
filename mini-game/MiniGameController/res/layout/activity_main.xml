@@ -28,4 +28,14 @@
         android:layout_marginTop="48dp"
         android:text="Game1" />
 
+    <Button
+        android:id="@+id/game2Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/game1Button"
+        android:layout_alignRight="@+id/game1Button"
+        android:layout_below="@+id/game1Button"
+        android:layout_marginTop="17dp"
+        android:text="Game2" />
+
 </RelativeLayout>

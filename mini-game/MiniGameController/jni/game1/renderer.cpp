@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <vector>
+#include <string>
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -29,13 +30,13 @@
  * game driver module arributes(modles/driver.c)
  */
 #define MINIGAME_MAJOR 242
-#define IOCTL_RUN_NONBLOCK _IO(MINIGAME_MAJOR, 0)
-#define IOCTL_STOP_NONBLOCK _IO(MINIGAME_MAJOR, 1)
-#define IOCTL_RESET_NONBLOCK _IO(MINIGAME_MAJOR, 2)
-#define IOCTL_DEC_LIFECOUNT_NONBLOCK _IO(MINIGAME_MAJOR, 3)
-#define IOCTL_GAMEOVER_NONBLOCK _IO(MINIGAME_MAJOR, 4)
-#define IOCTL_WAIT_BACK_INTERRUPT _IOR(MINIGAME_MAJOR, 5, int)
-#define INITIAL_LIFE 3
+#define IOCTL_RUN_TIMER_NONBLOCK _IO(MINIGAME_MAJOR, 0)
+#define IOCTL_STOP_TIMER_NONBLOCK _IO(MINIGAME_MAJOR, 1)
+#define IOCTL_OFF_TIMER_NONBLOCK _IO(MINIGAME_MAJOR, 2)
+#define IOCTL_RESET_TIMER_NONBLOCK _IO(MINIGAME_MAJOR, 3)
+#define IOCTL_SET_LED_NONBLOCK _IOW(MINIGAME_MAJOR, 4, int)
+#define IOCTL_SET_TEXT_LCD_NONBLOCK _IOW(MINIGAME_MAJOR, 5, char*)
+#define IOCTL_WAIT_BACK_INTERRUPT _IOR(MINIGAME_MAJOR, 6, int)
 enum direction{
 	NONE = 0,
 	UP,
@@ -43,6 +44,9 @@ enum direction{
 	RIGHT,
 	DOWN
 };
+#define INITIAL_LIFE 3
+#define LIFECOUNT_STR "LIFECOUNT: "
+#define GAMEOVER_STR "GAMEOVER        BACK->RESTART"
 
 /*
  * esl attributes
@@ -369,10 +373,16 @@ static void draw_frame(){
 			gstate.androboy_cur_rightest, gstate.androboy_cur_leftest, &crushed_car)){
 			--gstate.lifecount;
 			if(gstate.lifecount > 0){
-				ioctl(gpad.fd, IOCTL_DEC_LIFECOUNT_NONBLOCK);
+				std::string str = LIFECOUNT_STR;
+				str += gstate.lifecount + '0';
+				ioctl(gpad.fd, IOCTL_SET_LED_NONBLOCK, &gstate.lifecount);
+				ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
 			}
 			else{
-				ioctl(gpad.fd, IOCTL_GAMEOVER_NONBLOCK);
+				std::string str = GAMEOVER_STR;
+				ioctl(gpad.fd, IOCTL_OFF_TIMER_NONBLOCK);
+				ioctl(gpad.fd, IOCTL_SET_LED_NONBLOCK, &gstate.lifecount);
+				ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
 				gstate.gameover = true;
 				gover_attrib.last_crushed_car = crushed_car;
 				gover_attrib.gameover_time = gstate.cur_time;
@@ -507,6 +517,12 @@ void game1_create(){
 	gpad.fd = open("/dev/minigame", O_RDWR);
 	if(gpad.fd == -1) LOG_ERROR("open error");
 	else LOG_INFO("open success");
+	int initial_life = INITIAL_LIFE;
+	std::string str = LIFECOUNT_STR;
+	str += initial_life + '0';
+	ioctl(gpad.fd, IOCTL_RESET_TIMER_NONBLOCK);
+	ioctl(gpad.fd, IOCTL_SET_LED_NONBLOCK, &initial_life);
+	ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
 
 	egl.exists_window = false;
 	
@@ -558,7 +574,7 @@ void game1_resume(void){
 	else
 		LOG_INFO("First onResume()");
 
-	ioctl(gpad.fd, IOCTL_RUN_NONBLOCK);
+	ioctl(gpad.fd, IOCTL_RUN_TIMER_NONBLOCK);
 }
 
 void game1_pause(void){
@@ -568,7 +584,7 @@ void game1_pause(void){
 
 	pthread_join(gstate.tid, 0);
 	
-	ioctl(gpad.fd, IOCTL_STOP_NONBLOCK);
+	ioctl(gpad.fd, IOCTL_STOP_TIMER_NONBLOCK);
 }
 
 /*
@@ -577,7 +593,12 @@ void game1_pause(void){
 void game1_restart(void){
 	reset_ingame_attrib();
 	
-	ioctl(gpad.fd, IOCTL_RESET_NONBLOCK);
+	int initial_life = INITIAL_LIFE;
+	std::string str = LIFECOUNT_STR;
+	str += initial_life + '0';
+	ioctl(gpad.fd, IOCTL_RESET_TIMER_NONBLOCK);
+	ioctl(gpad.fd, IOCTL_SET_LED_NONBLOCK, &initial_life);
+	ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
 }
 
 /*

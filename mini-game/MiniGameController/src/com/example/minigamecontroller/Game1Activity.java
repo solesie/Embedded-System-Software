@@ -7,17 +7,15 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View;
-import android.view.View.OnClickListener;
 
 public class Game1Activity extends Activity implements SurfaceHolder.Callback {
-	private static native void nativeOnCreate();
-	private static native void nativeOnResume();
-	private static native void nativeOnPause();
-	private static native void nativeOnDestroy();
-	private static native void nativeSetSurface(Surface surface);
-	private static native void nativeRestartGame();
-	private static native boolean nativeWaitBackInterrupt();
+	private native void nativeOnCreate();
+	private native void nativeOnResume();
+	private native void nativeOnPause();
+	private native void nativeOnDestroy();
+	private native void nativeSetSurface(Surface surface);
+	private native void nativeRestartGame();
+	private native boolean nativeWaitBackInterrupt();
 	
 	private static String TAG = "Game1Activity";
 	
@@ -28,7 +26,7 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
 			Log.i(TAG, "Interrupt Dectector started");
 			// Blocking manner
 			if(nativeWaitBackInterrupt()){
-				Log.i(TAG, "Waked up by interr");
+				Log.i(TAG, "Waked up by interrupt");
 				// wake up
 				Intent intent = new Intent(Game1Activity.this, BackPopupActivity.class);
 				startActivity(intent);
@@ -81,6 +79,9 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
 			Log.i(TAG, "onNewIntent(RESTART)");
 			nativeRestartGame();
 		}
+		else if (getIntent().getBooleanExtra("RESUME", false)) {
+			Log.i(TAG, "onNewIntent(RESUME)");
+		}
 	}
 
 	@Override
@@ -96,13 +97,16 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
 		Log.i(TAG, "onDestroy()");
 		nativeOnDestroy();
 	}
-
+	
+	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
 		nativeSetSurface(holder.getSurface());
 	}
-
+	
+	@Override
 	public void surfaceCreated(SurfaceHolder holder) {}
-
+	
+	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
 		nativeSetSurface(null);
 	}

@@ -19,6 +19,7 @@ public class MainActivity extends Activity {
 		
 		Log.i(TAG, "onCreate()");
 		Button game1Button = (Button) findViewById(R.id.game1Button);
+		Button game2Button = (Button) findViewById(R.id.game2Button);
 		game1Button.setOnClickListener(new OnClickListener(){
 			@Override
 			public void onClick(View v) {
@@ -26,6 +27,16 @@ public class MainActivity extends Activity {
 				Intent intent = new Intent(
 						MainActivity.this,
 						Game1Activity.class);
+				startActivity(intent);
+			}
+		});
+		game2Button.setOnClickListener(new OnClickListener(){
+			@Override
+			public void onClick(View v){
+				Log.i(TAG, "b2 onClick()");
+				Intent intent = new Intent(
+						MainActivity.this,
+						Game2Activity.class);
 				startActivity(intent);
 			}
 		});

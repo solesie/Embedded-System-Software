@@ -1,5 +1,5 @@
 obj-m := minigame.o
-minigame-objs := driver.o switch_ctrl.o timer_ctrl.o lifecount_ctrl.o interrupt_ctrl.o
+minigame-objs := driver.o switch_ctrl.o timer_ctrl.o led_ctrl.o text_lcd_ctrl.o interrupt_ctrl.o
 
 KDIR := /work/achroimx_kernel
 PWD := $(shell pwd)

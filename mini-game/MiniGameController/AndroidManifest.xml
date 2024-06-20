@@ -27,6 +27,9 @@
             android:name=".Game1Activity">
         </activity>
         <activity 
+            android:name=".Game2Activity">
+        </activity>
+        <activity 
             android:name=".BackPopupActivity"
             android:theme="@style/PopupActivityTheme"
             android:launchMode="singleInstance">

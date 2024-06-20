@@ -5,5 +5,8 @@
     <string name="mini_game">Mini Game</string>
     <string name="game1">Game1</string>
     <string name="action_settings">Settings</string>
+    <string name="restart">Restart</string>
+    <string name="resume">Resume</string>
+    <string name="exit">Exit</string>
 
 </resources>
