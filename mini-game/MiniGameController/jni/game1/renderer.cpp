@@ -132,7 +132,7 @@ static void release_context(){
 	house_release();
 	androboy_release();
 
-	shaders_del();
+	game1_shaders_del();
 
 	eglMakeCurrent(egl.display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 	eglDestroyContext(egl.display, egl.context);
@@ -206,7 +206,7 @@ static void acquire_context(){
 	glViewport(0, 0, egl.width, egl.height);
 
 	// should be inited at current context
-	shaders_init();
+	game1_shaders_init();
 
 	// prepare models
 	road_prepare();

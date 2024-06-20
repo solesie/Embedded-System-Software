@@ -49,7 +49,7 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
 		setContentView(R.layout.activity_game1);
 		Log.i(TAG, "onCreate()");
 
-		SurfaceView surfaceView = (SurfaceView)findViewById(R.id.surfaceview);
+		SurfaceView surfaceView = (SurfaceView)findViewById(R.id.surfaceview1);
 		surfaceView.getHolder().addCallback(this);
 		
 		nativeOnCreate();

@@ -86,25 +86,25 @@ static GLuint load_shaders() {
 	return program;
 }
 
-GLuint g1_shader_program;
-GLint g1_loc_position, g1_loc_mvp_matrix, g1_loc_primitive_color;
-void shaders_init(void) {
-	g1_shader_program = load_shaders();
+GLuint g2_shader_program;
+GLint g2_loc_position, g2_loc_mvp_matrix, g2_loc_primitive_color;
+void game2_shaders_init(void) {
+	g2_shader_program = load_shaders();
 
-	glUseProgram(g1_shader_program);
+	glUseProgram(g2_shader_program);
 
-	g1_loc_mvp_matrix = glGetUniformLocation(g1_shader_program, "u_ModelViewProjectionMatrix");
-	g1_loc_primitive_color = glGetUniformLocation(g1_shader_program, "u_primitive_color");
-	g1_loc_position = glGetAttribLocation(g1_shader_program, "a_position");
+	g2_loc_mvp_matrix = glGetUniformLocation(g2_shader_program, "u_ModelViewProjectionMatrix");
+	g2_loc_primitive_color = glGetUniformLocation(g2_shader_program, "u_primitive_color");
+	g2_loc_position = glGetAttribLocation(g2_shader_program, "a_position");
 
-	glUseProgram(g1_shader_program);
-	LOG_INFO("Init shader finish %d %d %d %d", g1_shader_program, g1_loc_mvp_matrix, g1_loc_primitive_color, g1_loc_position);
+	glUseProgram(g2_shader_program);
+	LOG_INFO("Init shader finish %d %d %d %d", g2_shader_program, g2_loc_mvp_matrix, g2_loc_primitive_color, g2_loc_position);
 }
 
-void shaders_del(void){
-	if (g1_shader_program != 0) {
-		glDeleteProgram(g1_shader_program);
-		g1_shader_program = 0;
+void game2_shaders_del(void){
+	if (g2_shader_program != 0) {
+		glDeleteProgram(g2_shader_program);
+		g2_shader_program = 0;
 	}
 	struct shader_info* entry = shaders;
 	while(entry->type != GL_NONE){

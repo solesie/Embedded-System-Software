@@ -11,8 +11,6 @@ import android.view.SurfaceView;
 import android.view.SurfaceHolder;
 import java.security.SecureRandom;
 
-import com.example.minigamecontroller.Game1Activity.BackInterruptDetector;
-
 public class Game2Activity extends Activity implements SurfaceHolder.Callback {
 	private native void nativeOnCreate();
 	private native void nativeOnResume();
@@ -47,6 +45,10 @@ public class Game2Activity extends Activity implements SurfaceHolder.Callback {
 		}
 	}
 	private BackInterruptDetector backInterruptDetector;
+	
+	static {
+		System.loadLibrary("mini-game");
+	}
 	
 	/**
 	 * Initialize maze using Eller's Algorithm.
@@ -111,15 +113,41 @@ public class Game2Activity extends Activity implements SurfaceHolder.Callback {
 		setContentView(R.layout.activity_game2);
 		Log.i(TAG, "onCreate()");
 		
-		SurfaceView surfaceView = (SurfaceView)findViewById(R.id.surfaceview);
+		SurfaceView surfaceView = (SurfaceView)findViewById(R.id.surfaceview2);
 		surfaceView.getHolder().addCallback(this);
 		
 		nativeOnCreate();
 	}
+	
+	@Override
+	protected void onResume() {
+		super.onResume();
+		Log.i(TAG, "onResume()");
+		
+//		backInterruptDetector = new BackInterruptDetector();
+//		backInterruptDetector.setDaemon(true);
+//		backInterruptDetector.start();
+		
+		nativeOnResume();
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+		Log.i(TAG, "onPause()");
+		nativeOnPause();
+	}
+
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		Log.i(TAG, "onDestroy()");
+		nativeOnDestroy();
+	}
 
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
-		
+		nativeSetSurface(holder.getSurface());
 	}
 	
 	@Override
@@ -127,6 +155,6 @@ public class Game2Activity extends Activity implements SurfaceHolder.Callback {
 
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
-		
+		nativeSetSurface(null);
 	}
 }

@@ -1,15 +1,15 @@
-#ifndef SHADERS_LOADER_H
-#define SHADERS_LOADER_H
+#ifndef GAME2_SHADERS_LOADER_H
+#define GAME2_SHADERS_LOADER_H
 
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
 // handle to shader program
-extern GLuint g1_shader_program;
+extern GLuint g2_shader_program;
 // indices of uniform variables
-extern GLint g1_loc_mvp_matrix, g1_loc_primitive_color, g1_loc_position;
+extern GLint g2_loc_mvp_matrix, g2_loc_primitive_color, g2_loc_position;
 
-void shaders_init(void);
-void shaders_del(void);
+void game2_shaders_init(void);
+void game2_shaders_del(void);
 
-#endif // SHADERS_LOADER_H
+#endif // GAME2_SHADERS_LOADER_H

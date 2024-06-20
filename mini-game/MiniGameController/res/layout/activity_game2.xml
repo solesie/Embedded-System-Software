@@ -5,7 +5,7 @@
     tools:context="com.example.minigamecontroller.Game2Activity" >
     
 	<SurfaceView
-        android:id="@+id/surfaceview"
+        android:id="@+id/surfaceview2"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_alignParentLeft="true"
