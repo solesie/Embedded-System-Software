@@ -16,6 +16,8 @@ public class Game2Activity extends Activity implements SurfaceHolder.Callback {
 	private native void nativeOnResume();
 	private native void nativeOnPause();
 	private native void nativeOnDestroy();
+	private native void nativeOnStart();
+	private native void nativeOnStop();
 	private native void nativeSetSurface(Surface surface);
 	private native void nativeRestartGame();
 	private native boolean nativeWaitBackInterrupt();
@@ -36,6 +38,7 @@ public class Game2Activity extends Activity implements SurfaceHolder.Callback {
 				Log.i(TAG, "Waked up by interrupt");
 				// wake up
 				Intent intent = new Intent(Game2Activity.this, BackPopupActivity.class);
+				intent.putExtra("CALLING_ACTIVITY", Game2Activity.class);
 				startActivity(intent);
 				overridePendingTransition(0, 0);
 			}
@@ -74,7 +77,7 @@ public class Game2Activity extends Activity implements SurfaceHolder.Callback {
 		// Eller's Algorithm
 		for(int r = 0; r < ROW - 1; r++){
 			for (int c = 0; c < COL - 1; c++) {
-				boolean remove = secureRandom.nextInt(10) < 4 ? true : false; // 40%
+				boolean remove = secureRandom.nextInt(10) < 5 ? true : false; // 50%
 				if (remove && (profile[r][c] != profile[r][c + 1])) {
 					profile[r][c + 1] = profile[r][c];
 					ret[r * 2 + 1][c * 2 + 2] = 0;
@@ -93,7 +96,7 @@ public class Game2Activity extends Activity implements SurfaceHolder.Callback {
 				ret[r * 2 + 2][connectionIdx * 2 + 1] = 0;
 				
 				for(int s = profileS; s < nextProfileS; ++s){
-					boolean remove = secureRandom.nextInt(10) < 2 ? true : false; // 20%
+					boolean remove = secureRandom.nextInt(100) < 5 ? true : false; // 5%
 					if(remove){
 						profile[r + 1][connectionIdx] = profile[r][connectionIdx];
 						ret[r * 2 + 2][connectionIdx * 2 + 1] = 0;
@@ -124,11 +127,28 @@ public class Game2Activity extends Activity implements SurfaceHolder.Callback {
 		super.onResume();
 		Log.i(TAG, "onResume()");
 		
-//		backInterruptDetector = new BackInterruptDetector();
-//		backInterruptDetector.setDaemon(true);
-//		backInterruptDetector.start();
+		backInterruptDetector = new BackInterruptDetector();
+		backInterruptDetector.setDaemon(true);
+		backInterruptDetector.start();
 		
 		nativeOnResume();
+	}
+	
+	@Override
+	protected void onNewIntent(Intent intent) {
+		super.onNewIntent(intent);
+		setIntent(intent);
+		if (getIntent().getBooleanExtra("EXIT", false)) {
+			Log.i(TAG, "onNewIntent(EXIT)");
+			finish();
+		}
+		else if(getIntent().getBooleanExtra("RESTART", false)){
+			Log.i(TAG, "onNewIntent(RESTART)");
+			nativeRestartGame();
+		}
+		else if (getIntent().getBooleanExtra("RESUME", false)) {
+			Log.i(TAG, "onNewIntent(RESUME)");
+		}
 	}
 
 	@Override
@@ -143,6 +163,20 @@ public class Game2Activity extends Activity implements SurfaceHolder.Callback {
 		super.onDestroy();
 		Log.i(TAG, "onDestroy()");
 		nativeOnDestroy();
+	}
+	
+	@Override
+	protected void onStart(){
+		super.onStart();
+		Log.i(TAG, "onStart()");
+		nativeOnStart();
+	}
+	
+	@Override
+	protected void onStop(){
+		super.onStop();
+		Log.i(TAG, "onStop()");
+		nativeOnStop();
 	}
 
 	@Override

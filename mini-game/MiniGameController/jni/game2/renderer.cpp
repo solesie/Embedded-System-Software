@@ -3,6 +3,8 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <vector>
+#include <string>
+#include <sstream>
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -36,9 +38,15 @@ enum direction{
 	RIGHT,
 	DOWN
 };
+const static int ndir[5][2] = {
+	{0,0}, {-1,0}, {0,-1}, {0,1}, {1,0}
+};
 
-#define COMPLETE_STR "COMPLETE"
-#define EMPTY_STR ""
+#define MOVE_CNT_STR "MOVE CNT: "
+#define COMPLETE_STR "COMPLETE        BACK->RESTART"
+
+#define WIDTH_RATIO 2.0f
+#define HEIGHT_RATIO 1.35f
 
 /*
  * esl attributes
@@ -81,6 +89,11 @@ struct game_state{
 	bool is_paused;
 
 	long long cur_time;
+	std::vector<std::vector<int> > maze;
+	std::pair<int, int> cur_androman; // (r, c)
+	std::pair<int, int> goal_point; // (r, c)
+	int move_cnt;
+	bool gameover;
 };
 static struct game_state gstate;
 
@@ -92,12 +105,20 @@ static struct game_pad gpad;
 
 static glm::mat4 mvp_matrix, vp_matrix, m_matrix;
 
+/*
+ * (r, c) to (x, y) of tile's center
+ */
+static inline std::pair<float, float> maze_to_coord(int i, int j){
+	return std::make_pair(2.0f*egl.width/WIDTH_RATIO/gstate.maze[0].size()*j - egl.width/WIDTH_RATIO + egl.width/WIDTH_RATIO/gstate.maze[0].size(), 
+		-2.0f*egl.height/HEIGHT_RATIO/gstate.maze.size()*i + egl.height/HEIGHT_RATIO - egl.height/HEIGHT_RATIO/gstate.maze.size());
+}
+
 /* 
  * OpenGL calls operate on a current context. 
  * Before you can make any OpenGL calls, you need to create a context, and make it current. 
  * The context being current applies to a thread, so different threads should have different current contexts.
  */
-static void release_context(){
+static void release_context(void){
 	androman_release();
 	tile_release();
 
@@ -114,7 +135,7 @@ static void release_context(){
 	egl.config = NULL;
 	egl.numConfigs = egl.format = egl.width = egl.height = 0;
 }
-static void acquire_context(){
+static void acquire_context(void){
 	LOG_INFO("Acquire new context");
 
 	if ((egl.display = eglGetDisplay(EGL_DEFAULT_DISPLAY)) == EGL_NO_DISPLAY) {
@@ -182,17 +203,119 @@ static void acquire_context(){
 	tile_prepare();
 }
 
-static void reset_ingame_attrib(void){
+static void reset_ingame_attrib(std::vector<std::vector<int> >& maze){
 	gstate.is_paused = true;
+	gstate.cur_time = 0;
+	for(int i = 0; i < gstate.maze.size(); ++i) 
+		gstate.maze[i].clear();
+	gstate.maze.clear();
+	gstate.maze.resize(maze.size());
+	for(int i = 0; i < gstate.maze.size(); ++i)
+		gstate.maze[i] = maze[i];
 	
+	gstate.cur_androman = std::make_pair(0, 0);
+	gstate.goal_point = std::make_pair(0, 0);
+	if(maze.size() >= 3 && maze[0].size() >= 3){
+		int r = gstate.maze.size() - 2;
+		for(int j = 0; j < gstate.maze[r].size(); ++j){
+			if(gstate.maze[r][j] == 0){
+				gstate.cur_androman = std::make_pair(r, j);
+				break;
+			}
+		}
+		for(int j = gstate.maze[1].size() - 1; j >= 0; --j){
+			if(gstate.maze[1][j] == 0){
+				gstate.goal_point = std::make_pair(1, j);
+				break;
+			}
+		}
+	}
+	gstate.gameover = false;
+	gstate.move_cnt = 0;
+	gpad.prev_dir = NONE;
 }
 
+static void process_gameover(void){
+	if(gstate.gameover) return;
+	if(gstate.cur_androman == gstate.goal_point){
+		std::string str = COMPLETE_STR;
+		ioctl(gpad.fd, IOCTL_OFF_TIMER_NONBLOCK);
+		ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
+		gstate.gameover = true;
+	}
+}
+
+/*
+ * Read fpga push switch from minigame driver and
+ * change gstate androman coords.
+ */
+static void read_gpad(void){
+	enum direction input = NONE;
+	if(read(gpad.fd, &input, 1) != 1) return;
+	if(gstate.gameover) return;
+
+	for(int nd = 0; nd < 5; ++nd){
+		if(input == nd && input != gpad.prev_dir){
+			int nr = gstate.cur_androman.first + ndir[nd][0];
+			int nc = gstate.cur_androman.second + ndir[nd][1];
+			if(0 <= nr && nr < gstate.maze.size() && 0 <= nc && nc < gstate.maze[0].size()
+				&& gstate.maze[nr][nc] == 0){
+				gstate.cur_androman = std::make_pair(nr, nc);
+				if(gstate.move_cnt < INT_MAX && input != NONE) ++gstate.move_cnt;
+			}
+			gpad.prev_dir = (enum direction)input;
+			std::string str = MOVE_CNT_STR;
+			std::stringstream ss;
+			ss << gstate.move_cnt;
+			str += ss.str();
+			ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
+		}
+	}
+}
+
+static void draw_frame(void){
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	std::pair<float, float> pff;
+
+	// tile
+	for(int i = 0; i < gstate.maze.size(); ++i){
+		for(int j = 0; j < gstate.maze[i].size(); ++j){
+			if(gstate.maze[i][j] == 0) 
+				continue;
+			pff = maze_to_coord(i, j);
+			m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(pff.first, pff.second, 0.0f));
+			m_matrix = glm::scale(m_matrix, glm::vec3(2.0f*egl.width/WIDTH_RATIO/gstate.maze[0].size()/TILE_WIDTH, 
+				2.0f*egl.height/HEIGHT_RATIO/gstate.maze.size()/TILE_HEIGHT, 1.0f));
+			mvp_matrix = vp_matrix * m_matrix;
+			glUniformMatrix4fv(g2_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
+			tile_draw_wall();
+		}
+	}
+
+	// goal point
+	pff = maze_to_coord(gstate.goal_point.first, gstate.goal_point.second);
+	m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(pff.first, pff.second, 0.0f));
+	m_matrix = glm::scale(m_matrix, glm::vec3(2.0f*egl.width/WIDTH_RATIO/gstate.maze[0].size()/TILE_WIDTH, 
+		2.0f*egl.height/HEIGHT_RATIO/gstate.maze.size()/TILE_HEIGHT, 1.0f));
+	mvp_matrix = vp_matrix * m_matrix;
+	glUniformMatrix4fv(g2_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
+	tile_draw_goal();
+
+	// androman
+	pff = maze_to_coord(gstate.cur_androman.first, gstate.cur_androman.second);
+	m_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(pff.first, pff.second, 0.0f));
+	m_matrix = glm::scale(m_matrix, glm::vec3(0.5f, 0.3f, 1.0f));
+	mvp_matrix = vp_matrix * m_matrix;
+	glUniformMatrix4fv(g2_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
+	androman_draw();
+}
 static void* render_loop(void* nouse){
 	acquire_context();
 
 	// change screeen vertical to horizontal and normalize coords.
-	vp_matrix = glm::ortho(-egl.width / 2.0, egl.width / 2.0, 
-		-egl.height / 1.35, egl.height / 1.35, -1000.0, 1000.0);
+	vp_matrix = glm::ortho(-egl.width / WIDTH_RATIO, egl.width / WIDTH_RATIO, 
+		-egl.height / HEIGHT_RATIO, egl.height / HEIGHT_RATIO, -1000.0f, 1000.0f);
 	
 	while(true){
 		// consider onPause()
@@ -202,13 +325,9 @@ static void* render_loop(void* nouse){
 			pthread_mutex_unlock(&gstate.mutex);
 			pthread_exit(0);
 		}
-		// read_gpad();
-		// draw_frame();
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		m_matrix = glm::mat4(1.0f);
-		mvp_matrix = vp_matrix * m_matrix;
-		glUniformMatrix4fv(g2_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
-		tile_draw();
+		read_gpad();
+		process_gameover();
+		draw_frame();
 		if (!eglSwapBuffers(egl.display, egl.surface)) {
 			LOG_ERROR("eglSwapBuffers() returned error %d", eglGetError());
 		}
@@ -218,22 +337,23 @@ static void* render_loop(void* nouse){
 	}
 }
 
-void game2_create(){
+void game2_create(std::vector<std::vector<int> > maze){
 	gpad.fd = open("/dev/minigame", O_RDWR);
 	if(gpad.fd == -1) LOG_ERROR("open error");
 	else LOG_INFO("open success");
+	std::string str = MOVE_CNT_STR;
+	str += '0';
+	ioctl(gpad.fd, IOCTL_RESET_TIMER_NONBLOCK);
+	ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
 
 	egl.exists_window = false;
 	
-	pthread_mutex_init(&gstate.mutex, 0);
-	reset_ingame_attrib();
-
+	reset_ingame_attrib(maze);
 }
 
-void game2_destroy(){
-	pthread_mutex_destroy(&gstate.mutex);
-	reset_ingame_attrib();
-
+void game2_destroy(void){
+	std::vector<std::vector<int> > empty_maze;
+	reset_ingame_attrib(empty_maze);
 	close(gpad.fd);
 }
 
@@ -281,4 +401,39 @@ void game2_pause(void){
 	pthread_join(gstate.tid, 0);
 	
 	ioctl(gpad.fd, IOCTL_STOP_TIMER_NONBLOCK);
+}
+
+/*
+ * The restart method is always called in the onPause state and before onResume.
+ */
+void game2_restart(std::vector<std::vector<int> > maze){
+	reset_ingame_attrib(maze);
+	
+	std::string str = MOVE_CNT_STR;
+	str += '0';
+	ioctl(gpad.fd, IOCTL_RESET_TIMER_NONBLOCK);
+	ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
+}
+
+/*
+ * In a blocking manner, the back interrupt detector thread, which is passed in Java, 
+ * detects the back button interrupt.
+ */
+bool game2_wait_back_interrupt(void){
+	int waked_by_intr;
+	ioctl(gpad.fd, IOCTL_WAIT_BACK_INTERRUPT, &waked_by_intr);
+	if(waked_by_intr) {
+		LOG_INFO("waked up by interrupt");
+		return true;
+	}
+	LOG_INFO("waked up by pause");
+	return false;
+}
+
+void game2_start(void){
+	pthread_mutex_init(&gstate.mutex, 0);
+}
+
+void game2_stop(void){
+	pthread_mutex_destroy(&gstate.mutex);
 }

@@ -125,7 +125,7 @@ static glm::mat4 mvp_matrix, vp_matrix, m_matrix;
  * Before you can make any OpenGL calls, you need to create a context, and make it current. 
  * The context being current applies to a thread, so different threads should have different current contexts.
  */
-static void release_context(){
+static void release_context(void){
 	road_release();
 	sword_release();
 	car_release();
@@ -145,7 +145,7 @@ static void release_context(){
 	egl.config = NULL;
 	egl.numConfigs = egl.format = egl.width = egl.height = 0;
 }
-static void acquire_context(){
+static void acquire_context(void){
 	LOG_INFO("Acquire new context");
 
 	if ((egl.display = eglGetDisplay(EGL_DEFAULT_DISPLAY)) == EGL_NO_DISPLAY) {
@@ -243,10 +243,9 @@ static void reset_ingame_attrib(void){
  * change gstate androboy coords.
  */
 static void read_gpad(void){
-	enum direction input;
+	enum direction input = NONE;
 	if(read(gpad.fd, &input, 1) != 1) return;
 	if(gstate.gameover) return;
-
 	switch(input){
 	case LEFT:
 		if (-490 < gstate.androboy_cur_x) {
@@ -283,7 +282,50 @@ static void read_gpad(void){
 	}
 }
 
-static void draw_frame(){
+static void process_gameover(void){
+	if(gstate.gameover) return;
+	// check crushed car
+	std::pair<float, float> crushed_car;
+	if(car_remove_crushed(gstate.cur_time, gstate.androboy_cur_line, 
+		gstate.androboy_cur_rightest, gstate.androboy_cur_leftest, &crushed_car)){
+		--gstate.lifecount;
+		// check gameover
+		if(gstate.lifecount > 0){
+			std::string str = LIFECOUNT_STR;
+			str += gstate.lifecount + '0';
+			ioctl(gpad.fd, IOCTL_SET_LED_NONBLOCK, &gstate.lifecount);
+			ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
+		}
+		else{
+			// set gameover motion rendering attributes
+			std::string str = GAMEOVER_STR;
+			std::vector<std::pair<float, float> > swords = swords_get(gstate.cur_time);
+			ioctl(gpad.fd, IOCTL_OFF_TIMER_NONBLOCK);
+			ioctl(gpad.fd, IOCTL_SET_LED_NONBLOCK, &gstate.lifecount);
+			ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
+			gstate.gameover = true;
+			gover_attrib.last_crushed_car = crushed_car;
+			gover_attrib.gameover_time = gstate.cur_time;
+			gover_attrib.gameover_swords = swords;
+
+			int ss = gover_attrib.gameover_swords.size();
+			float androboy_x = gstate.androboy_cur_x;
+			float androboy_y = -90 - (gstate.androboy_cur_line * 67.5);
+			gover_attrib.rotating_swords_cur_time.resize(ss, 0.0f);
+			gover_attrib.killing_swords_delta.resize(ss, 0.0f);
+			gover_attrib.rotating_swords_time_limit.resize(ss);
+			for (int i = 0; i < ss; ++i) {
+				float sword_x = gover_attrib.gameover_swords[i].first;
+				float sword_y = gover_attrib.gameover_swords[i].second;
+				float sword_angle = atanf((sword_y - androboy_y) / (sword_x - androboy_x));
+				sword_angle += sword_angle < 0 ? 270 * TO_RADIAN : 90 * TO_RADIAN;
+				gover_attrib.rotating_swords_time_limit[i] = sword_angle * TO_DEGREE;
+			}
+		}
+	}
+}
+
+static void draw_frame(void){
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// road
@@ -365,43 +407,6 @@ static void draw_frame(){
 			mvp_matrix = vp_matrix * m_matrix;
 			glUniformMatrix4fv(g1_loc_mvp_matrix, 1, GL_FALSE, &mvp_matrix[0][0]);
 			sword_draw();
-		}
-
-		// check gameover
-		std::pair<float, float> crushed_car;
-		if(car_remove_crushed(gstate.cur_time, gstate.androboy_cur_line, 
-			gstate.androboy_cur_rightest, gstate.androboy_cur_leftest, &crushed_car)){
-			--gstate.lifecount;
-			if(gstate.lifecount > 0){
-				std::string str = LIFECOUNT_STR;
-				str += gstate.lifecount + '0';
-				ioctl(gpad.fd, IOCTL_SET_LED_NONBLOCK, &gstate.lifecount);
-				ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
-			}
-			else{
-				std::string str = GAMEOVER_STR;
-				ioctl(gpad.fd, IOCTL_OFF_TIMER_NONBLOCK);
-				ioctl(gpad.fd, IOCTL_SET_LED_NONBLOCK, &gstate.lifecount);
-				ioctl(gpad.fd, IOCTL_SET_TEXT_LCD_NONBLOCK, str.c_str());
-				gstate.gameover = true;
-				gover_attrib.last_crushed_car = crushed_car;
-				gover_attrib.gameover_time = gstate.cur_time;
-				gover_attrib.gameover_swords = swords;
-
-				int ss = gover_attrib.gameover_swords.size();
-				float androboy_x = gstate.androboy_cur_x;
-				float androboy_y = -90 - (gstate.androboy_cur_line * 67.5);
-				gover_attrib.rotating_swords_cur_time.resize(ss, 0.0f);
-				gover_attrib.killing_swords_delta.resize(ss, 0.0f);
-				gover_attrib.rotating_swords_time_limit.resize(ss);
-				for (int i = 0; i < ss; ++i) {
-					float sword_x = gover_attrib.gameover_swords[i].first;
-					float sword_y = gover_attrib.gameover_swords[i].second;
-					float sword_angle = atanf((sword_y - androboy_y) / (sword_x - androboy_x));
-					sword_angle += sword_angle < 0 ? 270 * TO_RADIAN : 90 * TO_RADIAN;
-					gover_attrib.rotating_swords_time_limit[i] = sword_angle * TO_DEGREE;
-				}
-			}
 		}
 	}
 	else{
@@ -503,6 +508,7 @@ static void* render_loop(void* nouse){
 			pthread_exit(0);
 		}
 		read_gpad();
+		process_gameover();
 		draw_frame();
 		if (!eglSwapBuffers(egl.display, egl.surface)) {
 			LOG_ERROR("eglSwapBuffers() returned error %d", eglGetError());
@@ -513,7 +519,7 @@ static void* render_loop(void* nouse){
 	}
 }
 
-void game1_create(){
+void game1_create(void){
 	gpad.fd = open("/dev/minigame", O_RDWR);
 	if(gpad.fd == -1) LOG_ERROR("open error");
 	else LOG_INFO("open success");
@@ -526,19 +532,23 @@ void game1_create(){
 
 	egl.exists_window = false;
 	
-	pthread_mutex_init(&gstate.mutex, 0);
 	reset_ingame_attrib();
 
 	swords_create();
 }
 
-void game1_destroy(){
-	pthread_mutex_destroy(&gstate.mutex);
+void game1_destroy(void){
 	reset_ingame_attrib();
-
 	swords_destroy();
-
 	close(gpad.fd);
+}
+
+void game1_start(void){
+	pthread_mutex_init(&gstate.mutex, 0);
+}
+
+void game1_stop(void){
+	pthread_mutex_destroy(&gstate.mutex);
 }
 
 void game1_del_surface(void){
@@ -588,7 +598,7 @@ void game1_pause(void){
 }
 
 /*
- * onPause() -> Restart()
+ * The restart method is always called in the onPause state and before onResume.
  */
 void game1_restart(void){
 	reset_ingame_attrib();

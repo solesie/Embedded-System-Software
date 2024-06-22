@@ -12,5 +12,7 @@ void game1_resume(void);
 void game1_pause(void);
 void game1_restart(void);
 bool game1_wait_back_interrupt(void);
+void game1_start(void);
+void game1_stop(void);
 
 #endif // GAME1_RENDERER_H

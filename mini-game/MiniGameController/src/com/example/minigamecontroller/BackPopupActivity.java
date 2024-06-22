@@ -25,12 +25,16 @@ public class BackPopupActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				Log.i(TAG, "resumeButton clicked");
-				Intent intent = new Intent(BackPopupActivity.this, Game1Activity.class);
-				// reuse current Game1Activity
-				intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-				intent.putExtra("RESUME", true);
-				startActivity(intent);
-				finish();
+				Intent callerIntent = getIntent();
+				Class<?> callingActivity = (Class<?>) callerIntent.getSerializableExtra("CALLING_ACTIVITY");
+				if(callingActivity != null){
+					Intent intent = new Intent(BackPopupActivity.this, callingActivity);
+					// reuse current Game1Activity
+					intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+					intent.putExtra("RESUME", true);
+					startActivity(intent);
+					finish();
+				}
 			}
 		});
 
@@ -39,12 +43,16 @@ public class BackPopupActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				Log.i(TAG, "closeButton clicked");
-				Intent intent = new Intent(BackPopupActivity.this, Game1Activity.class);
-				// reuse current Game1Activity
-				intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-				intent.putExtra("EXIT", true);
-				startActivity(intent);
-				finish();
+				Intent callerIntent = getIntent();
+				Class<?> callingActivity = (Class<?>) callerIntent.getSerializableExtra("CALLING_ACTIVITY");
+				if(callingActivity != null){
+					Intent intent = new Intent(BackPopupActivity.this, callingActivity);
+					// reuse current Game1Activity
+					intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+					intent.putExtra("EXIT", true);
+					startActivity(intent);
+					finish();
+				}
 			}
 		});
 		
@@ -53,12 +61,16 @@ public class BackPopupActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				Log.i(TAG, "restart clicked");
-				Intent intent = new Intent(BackPopupActivity.this, Game1Activity.class);
-				// reuse current Game1Activity
-				intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-				intent.putExtra("RESTART", true);
-				startActivity(intent);
-				finish();
+				Intent callerIntent = getIntent();
+				Class<?> callingActivity = (Class<?>) callerIntent.getSerializableExtra("CALLING_ACTIVITY");
+				if(callingActivity != null){
+					Intent intent = new Intent(BackPopupActivity.this, callingActivity);
+					// reuse current Game1Activity
+					intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+					intent.putExtra("RESTART", true);
+					startActivity(intent);
+					finish();
+				}
 			}
 		});
 	}

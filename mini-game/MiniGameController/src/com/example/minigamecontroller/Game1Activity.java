@@ -15,6 +15,8 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
 	private native void nativeOnDestroy();
 	private native void nativeSetSurface(Surface surface);
 	private native void nativeRestartGame();
+	private native void nativeOnStart();
+	private native void nativeOnStop();
 	private native boolean nativeWaitBackInterrupt();
 	
 	private static String TAG = "Game1Activity";
@@ -29,6 +31,7 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
 				Log.i(TAG, "Waked up by interrupt");
 				// wake up
 				Intent intent = new Intent(Game1Activity.this, BackPopupActivity.class);
+				intent.putExtra("CALLING_ACTIVITY", Game1Activity.class);
 				startActivity(intent);
 				overridePendingTransition(0, 0);
 			}
@@ -96,6 +99,20 @@ public class Game1Activity extends Activity implements SurfaceHolder.Callback {
 		super.onDestroy();
 		Log.i(TAG, "onDestroy()");
 		nativeOnDestroy();
+	}
+	
+	@Override
+	protected void onStart(){
+		super.onStart();
+		Log.i(TAG, "onStart()");
+		nativeOnStart();
+	}
+	
+	@Override
+	protected void onStop(){
+		super.onStop();
+		Log.i(TAG, "onStop()");
+		nativeOnStop();
 	}
 	
 	@Override
