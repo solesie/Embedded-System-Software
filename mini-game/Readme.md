@@ -62,6 +62,6 @@ In the maze game, the player navigates through a maze to reach the goal point. T
 2. Prepare the Target Board:
     - On the target board, execute the script by running: `sh prepare.sh`
 3. Build and Run the MiniGameController:
-    - Navigate to the MiniGameController/jni directory
+    - Navigate to the MiniGameController/ directory
     - Run the command: `ndk-build`
     - After the build is complete, run the application
