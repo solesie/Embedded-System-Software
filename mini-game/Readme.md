@@ -5,7 +5,7 @@ This project is an Android mini game application utilizing NDK and OpenGL ES 2.0
 ## Project Details
 
 - **NDK Version**: r10e
-- **External Library**: GLM 0.9.5.4 (Header-Only library version, 2014-06-21)
+- **External Library**: GLM 0.9.5.4 (Header-Only library version, 2014-06-21, located at work/mydroid/android-ndk-r10e/platforms/android-19/arch-arm/usr/include/)    
 
 ## Games Included
 
